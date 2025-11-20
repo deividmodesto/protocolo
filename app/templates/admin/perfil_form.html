@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1>{{ title }}</h1>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <div class="card">
+            <div class="card-body">
+                <div class="mb-3">
+                    {{ form.nome.label(class="form-label") }}
+                    {{ form.nome(class="form-control") }}
+                </div>
+                <hr>
+                <div class="mb-3">
+                    {{ form.permissoes.label(class="form-label") }}
+                    <div class="list-group">
+                        {% for value, label in form.permissoes.choices %}
+                        <label class="list-group-item">
+                            <input type="checkbox" name="permissoes" value="{{ value }}" {% if value in form.permissoes.data %}checked{% endif %}>
+                            {{ label }}
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="mt-4">
+                    {{ form.submit(class="btn btn-success") }}
+                    <a href="{{ url_for('main.listar_perfis') }}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; }
+        .container { padding: 20px; border: 1px solid #ccc; border-radius: 5px; max-width: 600px; }
+        .protocolo-info { border-left: 4px solid #0d6efd; padding-left: 15px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p>Olá, {{ destinatario.nome }},</p>
+        <p>Um novo protocolo foi direcionado a você por <strong>{{ remetente.nome }}</strong>.</p>
+        <hr>
+        <div class="protocolo-info">
+            <p><strong>Número:</strong> {{ protocolo.numero_protocolo }}</p>
+            <p><strong>Assunto:</strong> {{ protocolo.assunto }}</p>
+            <p><strong>Descrição:</strong></p>
+            <p><em>"{{ protocolo.descricao }}"</em></p>
+        </div>
+        <hr>
+        <p>Por favor, acesse o sistema para dar andamento à solicitação.</p>
+        <p><small>Este é um e-mail automático. Por favor, não responda.</small></p>
+    </div>
+</body>
+</html>

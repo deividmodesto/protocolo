@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Painel de Administração{% endblock %}
+
+{% block content %}
+    <h1>Painel de Administração</h1>
+    <p>Bem-vindo(a), {{ current_user.nome }}.</p>
+
+    <div class="list-group">
+    {% if current_user.tem_permissao('gerenciar_setores') %}
+        <a href="{{ url_for('main.listar_setores') }}" class="list-group-item list-group-item-action">Gerenciar Setores</a>
+    {% endif %}
+
+    {% if current_user.tem_permissao('gerenciar_colaboradores') %}
+        <a href="{{ url_for('main.listar_colaboradores') }}" class="list-group-item list-group-item-action">Gerenciar Colaboradores</a>
+    {% endif %}
+
+    {% if current_user.tem_permissao('gerenciar_fornecedores') %}
+        <a href="{{ url_for('main.listar_fornecedores') }}" class="list-group-item list-group-item-action">Gerenciar Fornecedores</a>
+    {% endif %}
+    
+    {% if current_user.tem_permissao('gerenciar_modelos') %}
+        <a href="{{ url_for('main.listar_modelos') }}" class="list-group-item list-group-item-action">Gerenciar Modelos de Protocolo</a>
+    {% endif %}
+
+   
+    {% if current_user.tem_permissao('gerenciar_perfis') %}
+        <a href="{{ url_for('main.listar_perfis') }}" class="list-group-item list-group-item-action">Gerenciar Perfis de Acesso</a>
+    {% endif %}
+
+    {% if current_user.tem_permissao('ver_relatorios_gerenciais') %}
+        <a href="{{ url_for('main.relatorios') }}" class="list-group-item list-group-item-action">Relatórios e Gráficos</a>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Meus Protocolos</h1>
+    <a href="{{ url_for('main.criar_protocolo') }}" class="btn btn-primary">Criar Novo Protocolo</a>
+  </div>
+
+  <div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('main.index') }}">
+            <input type="hidden" name="view" value="{{ view_mode }}">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3"> {{ form.termo_busca.label(class="form-label") }}
+                    {{ form.termo_busca(class="form-control") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.modelo.label(class="form-label") }}
+                    {{ form.modelo(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.status.label(class="form-label") }}
+                    {{ form.status(class="form-select") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.data_inicio.label(class="form-label") }}
+                    {{ form.data_inicio(class="form-control") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.data_fim.label(class="form-label") }}
+                    {{ form.data_fim(class="form-control") }}
+                </div>
+                <div class="col-md-1"> {{ form.submit(class="btn btn-secondary w-100") }}
+                </div>
+            </div>
+        </form>
+    </div>
+  </div>
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="btn-group" role="group">
+        {# Cria um dicionário com os argumentos atuais e define a view para 'list' #}
+        {% set list_args = request.args.to_dict() %}
+        {% set _ = list_args.update({'view': 'list'}) %}
+        <a href="{{ url_for('main.index', **list_args) }}" class="btn {% if view_mode == 'list' %}btn-dark{% else %}btn-outline-dark{% endif %}">Visualização em Lista</a>
+
+        {# Cria um dicionário com os argumentos atuais e define a view para 'kanban' #}
+        {% set kanban_args = request.args.to_dict() %}
+        {% set _ = kanban_args.update({'view': 'kanban'}) %}
+        <a href="{{ url_for('main.index', **kanban_args) }}" class="btn {% if view_mode == 'kanban' %}btn-dark{% else %}btn-outline-dark{% endif %}">Visualização Kanban</a>
+    </div>
+      {% if view_mode == 'list' and pagination %}
+        <form method="GET" action="{{ url_for('main.index') }}" class="d-inline-block" id="per_page_form">
+            <input type="hidden" name="view" value="list">
+            <input type="hidden" name="termo_busca" value="{{ request.args.get('termo_busca', '') }}">
+            <input type="hidden" name="modelo" value="{{ request.args.get('modelo', '') }}"> <input type="hidden" name="status" value="{{ request.args.get('status', '') }}">
+            <input type="hidden" name="data_inicio" value="{{ request.args.get('data_inicio', '') }}">
+            <input type="hidden" name="data_fim" value="{{ request.args.get('data_fim', '') }}">
+            
+            <div class="input-group input-group-sm" style="width: 150px;">
+                <label class="input-group-text" for="per_page">Itens/pág:</label>
+                <select name="per_page" id="per_page" class="form-select" onchange="this.form.submit()">
+                    <option value="10" {% if pagination.per_page == 10 %}selected{% endif %}>10</option>
+                    <option value="25" {% if pagination.per_page == 25 %}selected{% endif %}>25</option>
+                    <option value="50" {% if pagination.per_page == 50 %}selected{% endif %}>50</option>
+                </select>
+            </div>
+        </form>
+      {% endif %}
+  </div>
+
+  {% if view_mode == 'kanban' %}
+    {% include '_kanban_board.html' %}
+  {% else %}
+    {# A visualização de lista agora fica em seu próprio card #}
+    <div class="card">
+        {% if pagination %}
+        <div class="card-header">
+            Exibindo {{ pagination.items|length }} de {{ pagination.total }} protocolos
+        </div>
+        {% endif %}
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+    <thead>
+      <tr>
+        <th scope="col">Número</th>
+        <th scope="col">Modelo</th> <th scope="col">Assunto</th>
+        <th scope="col">Criado Por</th>
+        <th scope="col">Setor Destino</th>
+        <th scope="col">Status</th>
+        <th scope="col">Prazo Final</th>
+        <th scope="col">Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {# Define o dicionário de cores para os status #}
+      {% set status_colors = {'Aberto': 'primary', 'Em Análise': 'warning', 'Pendente': 'secondary', 'Finalizado': 'success', 'Arquivado': 'dark'} %}
+
+      {% for protocolo in protocolos %}
+        {% set sla = sla_status(protocolo.data_vencimento, protocolo.status) %}
+        <tr class="{{ 'table-' + sla.cor if sla }}">
+          <th scope="row">
+            {{ protocolo.numero_protocolo }}
+            {% if protocolo.is_externo %}
+                <span class="badge bg-dark">Externo</span>
+            {% endif %}
+          </th>
+          
+          <td>
+            {% if protocolo.modelo_usado %}
+                <span class="badge bg-secondary">{{ protocolo.modelo_usado.nome }}</span>
+            {% else %}
+                -
+            {% endif %}
+          </td>
+          
+          <td>{{ protocolo.assunto }}</td>
+          <td>{{ protocolo.criado_por.nome }}</td>
+          <td>{{ protocolo.setor_destinatario.nome }}</td>
+          <td>
+              <span class="badge bg-{{ status_colors.get(protocolo.status, 'info') }}">{{ protocolo.status }}</span>
+          </td>
+          <td>
+            {% if protocolo.data_vencimento %}
+                {{ protocolo.data_vencimento.strftime('%d/%m/%Y') }}
+                {% if sla %}
+                  <span class="badge bg-{{ sla.cor }} ms-1">{{ sla.texto }}</span>
+                {% endif %}
+            {% else %}
+                -
+            {% endif %}
+          </td>
+          <td>
+            <div class="dropdown">
+                <button class="btn btn-sm btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    Ações
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ url_for('main.protocolo_detalhe', protocolo_id=protocolo.id) }}">Ver Detalhes</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('main.gerar_protocolo_pdf', protocolo_id=protocolo.id) }}" target="_blank">Gerar PDF</a></li>
+                </ul>
+            </div>
+          </td>
+        </tr>
+      {% else %}
+        <tr>
+          <td colspan="8" class="text-center">Nenhum protocolo encontrado com os filtros atuais.</td> </tr>
+      {% endfor %}
+    </tbody>
+</table>
+        </div>
+        {% if pagination and pagination.pages > 1 %}
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.index', page=pagination.prev_num, **request.args) }}">Anterior</a>
+                    </li>
+                    {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                        {% if page_num %}
+                            <li class="page-item {% if pagination.page == page_num %}active{% endif %}">
+                                <a class="page-link" href="{{ url_for('main.index', page=page_num, **request.args) }}">{{ page_num }}</a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                    {% endfor %}
+                    <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.index', page=pagination.next_num, **request.args) }}">Próxima</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+  {% endif %}
+
+{% endblock %}

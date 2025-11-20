@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; }
+        .container { padding: 20px; border: 1px solid #ccc; border-radius: 5px; max-width: 600px; }
+        .status { font-weight: bold; padding: 3px 8px; border-radius: 4px; color: white; }
+        .status-aberto { background-color: #0d6efd; }
+        .status-analise { background-color: #ffc107; color: black; }
+        .status-pendente { background-color: #6c757d; }
+        .status-finalizado { background-color: #198754; }
+        .status-arquivado { background-color: #212529; }
+        .despacho { border-left: 4px solid #eee; padding-left: 15px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <p>Olá, {{ criador.nome }},</p>
+        <p>Seu protocolo <strong>{{ protocolo.numero_protocolo }}</strong> foi atualizado.</p>
+        <hr>
+        <p><strong>Assunto:</strong> {{ protocolo.assunto }}</p>
+        <p>
+            <strong>Novo Status:</strong> 
+            {% if novo_status == 'Aberto' %}<span class="status status-aberto">{{ novo_status }}</span>
+            {% elif novo_status == 'Em Análise' %}<span class="status status-analise">{{ novo_status }}</span>
+            {% elif novo_status == 'Pendente' %}<span class="status status-pendente">{{ novo_status }}</span>
+            {% elif novo_status == 'Finalizado' %}<span class="status status-finalizado">{{ novo_status }}</span>
+            {% elif novo_status == 'Arquivado' %}<span class="status status-arquivado">{{ novo_status }}</span>
+            {% else %}{{ novo_status }}{% endif %}
+        </p>
+        <div class="despacho">
+            <p><strong>Despacho adicionado por {{ autor_despacho }}:</strong></p>
+            <p><em>"{{ despacho }}"</em></p>
+        </div>
+        <hr>
+        <p><small>Este é um e-mail automático. Por favor, não responda.</small></p>
+    </div>
+</body>
+</html>

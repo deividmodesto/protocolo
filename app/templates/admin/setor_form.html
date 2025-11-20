@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ title }}</h1>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.nome.label(class="form-label") }}
+            {{ form.nome(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.submit(class="btn btn-success") }}
+            <a href="{{ url_for('main.listar_setores') }}" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Relatórios e Gráficos{% endblock %}
+{% block content %}
+    <h1>Relatórios e Gráficos</h1>
+    <p>Análise visual dos dados do sistema de protocolo.</p>
+
+    <div class="card mt-4">
+    <div class="card-header">
+        Relatórios Detalhados
+    </div>
+    <div class="card-body">
+        <a href="{{ url_for('main.relatorio_auditoria') }}" class="btn btn-outline-primary">Ver Trilha de Auditoria Completa</a>
+    </div>
+</div>
+
+<a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary mt-4">Voltar ao Painel</a>
+
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">Protocolos Criados por Mês (Últimos 12 meses)</div>
+                <div class="card-body">
+                    <canvas id="chartProtocolosPorMes"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">Protocolos por Status</div>
+                <div class="card-body">
+                    <canvas id="chartProtocolosPorStatus"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">Protocolos por Setor de Destino</div>
+                <div class="card-body">
+                     <canvas id="chartProtocolosPorSetor"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary mt-4">Voltar ao Painel</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Função para gerar cores aleatórias para os gráficos de pizza/barra
+    const getRandomColor = () => `#${Math.floor(Math.random()*16777215).toString(16).padStart(6, '0')}`;
+
+    // Gráfico 1: Protocolos por Mês
+    fetch('/api/relatorios/protocolos_por_mes')
+        .then(response => response.json())
+        .then(dados => {
+            const ctx = document.getElementById('chartProtocolosPorMes');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dados.labels,
+                    datasets: [{
+                        label: 'Nº de Protocolos',
+                        data: dados.data,
+                        backgroundColor: '#012E23',
+                        borderColor: '#05B540',
+                        borderWidth: 1
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+        });
+
+    // Gráfico 2: Protocolos por Status
+    fetch('/api/relatorios/protocolos_por_status')
+        .then(response => response.json())
+        .then(dados => {
+            const ctx = document.getElementById('chartProtocolosPorStatus');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: dados.labels,
+                    datasets: [{
+                        label: 'Status',
+                        data: dados.data,
+                        backgroundColor: [ '#012E23', '#05B540', '#FFAA00', '#FF6600', '#6c757d' ],
+                        hoverOffset: 4
+                    }]
+                }
+            });
+        });
+
+    // Gráfico 3: Protocolos por Setor
+    fetch('/api/relatorios/protocolos_por_setor')
+        .then(response => response.json())
+        .then(dados => {
+            const ctx = document.getElementById('chartProtocolosPorSetor');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: dados.labels,
+                    datasets: [{
+                        label: 'Nº de Protocolos Recebidos',
+                        data: dados.data,
+                        backgroundColor: dados.labels.map(() => getRandomColor()),
+                    }]
+                },
+                options: { scales: { y: { beginAtZero: true } } }
+            });
+        });
+</script>
+{% endblock %}

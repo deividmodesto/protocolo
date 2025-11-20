@@ -1,0 +1,412 @@
+{% extends "base.html" %}
+{% block title %}Abrir Novo Protocolo{% endblock %}
+{% block content %}
+    <h2>Abrir Novo Protocolo</h2>
+    <form method="POST" action="" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+
+        <div class="accordion" id="protocoloAccordion">
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingOne">
+                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                        1. Dados Principais do Protocolo
+                    </button>
+                </h2>
+                <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#protocoloAccordion">
+                    <div class="accordion-body">
+                        <div class="row">
+                            <div class="col-md-9 mb-3">
+                                {{ form.assunto.label(class="form-label") }}
+                                {{ form.assunto(class="form-control") }}
+                            </div>
+                            <div class="col-md-3 mb-3">
+                                {{ form.data_vencimento.label(class="form-label") }}
+                                {{ form.data_vencimento(class="form-control") }}
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.setor_destinatario.label(class="form-label") }}
+                                {{ form.setor_destinatario(class="form-select") }}
+                            </div>
+                            
+                            <div class="col-md-6 mb-3 position-relative">
+                                <label for="fornecedor_busca" class="form-label">Fornecedor Associado (Opcional)</label>
+                                <input type="text" id="fornecedor_busca" class="form-control" placeholder="Digite código ou nome para buscar...">
+                                <input type="hidden" id="fornecedor_ext_cod_hidden" name="fornecedor_ext_cod">
+                                <input type="hidden" id="fornecedor_ext_nome_hidden" name="fornecedor_ext_nome">
+                                <div id="fornecedor_results" class="list-group position-absolute w-100" style="z-index: 1000; max-height: 300px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                         <div class="row">
+                            <div class="col-md-6 mb-3">
+                                {{ form.colaborador_destinatario.label(class="form-label") }}
+                                {{ form.colaborador_destinatario(class="form-select") }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingTwo">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                        2. Usar Modelo e Preencher Dados (Opcional)
+                    </button>
+                </h2>
+                <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#protocoloAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3">
+                            {{ form.modelo.label(class="form-label") }}
+                            {{ form.modelo(class="form-select") }}
+                        </div>
+                        <div class="table-responsive"> 
+                                <table class="table table-bordered">
+                                    <thead id="tabela-dinamica-head"></thead>
+                                    <tbody id="tabela-dinamica-body"></tbody>
+                                </table>
+                            </div>
+                        <div id="tabela-dinamica-container" class="d-none mt-3">
+                            <div class="table-responsive"> 
+                                <table class="table table-bordered"> 
+                                    <thead id="tabela-dinamica-head"></thead>
+                                    <tbody id="tabela-dinamica-body"></tbody>
+                            </table>
+                            <button type="button" id="add-row-btn" class="btn btn-outline-success btn-sm">Adicionar Linha</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="headingThree">
+                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                        3. Descrição Detalhada e Anexos
+                    </button>
+                </h2>
+                <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#protocoloAccordion">
+                    <div class="accordion-body">
+                        <div class="mb-3 form-check">
+                            {{ form.is_externo(class="form-check-input") }}
+                            {{ form.is_externo.label(class="form-check-label") }}
+                        </div>
+                        <div class="mt-3">
+                            {{ form.descricao.label(class="form-label") }}
+                            {{ form.descricao(class="form-control", rows=5) }}
+                        </div>
+                        <div class="mt-3">
+                            {{ form.anexos.label(class="form-label") }}
+                            {{ form.anexos(class="form-control") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            {{ form.submit(class="btn btn-primary btn-lg") }}
+        </div>
+    </form>
+{% endblock %}
+
+
+{% block scripts %}
+{{ super() }} {# Importante para manter os scripts do base.html #}
+
+<script>
+    // --- SCRIPT PARA CAMPOS DINÂMICOS DO MODELO (TABELA) ---
+    let camposDoModelo = [];
+    let rowCount = 0;
+
+    function adicionarLinha() {
+        const tbody = document.getElementById('tabela-dinamica-body');
+        const newRow = tbody.insertRow();
+        
+        camposDoModelo.forEach(campo => {
+            const newCell = newRow.insertCell();
+            let input = document.createElement(campo.tipo_campo === 'area_de_texto' ? 'textarea' : 'input');
+            
+            if (input.tagName === 'TEXTAREA') {
+                input.rows = 2; // Pode aumentar o número de linhas se desejar
+                input.style.width = '300px'; // Largura para campos de texto longo
+            } else {
+                const tipoInput = {'texto': 'text', 'numero': 'number', 'data': 'date'}[campo.tipo_campo] || 'text';
+                input.type = tipoInput;
+                input.style.width = '220px'; // Largura para campos de texto, número e data
+            }
+            
+            input.classList.add('form-control');
+            input.name = `${campo.nome_campo}-${rowCount}`; 
+            if (campo.obrigatorio) input.required = true;
+
+            // Define o estilo diretamente no elemento
+            input.style.minWidth = input.style.width; // Garante que não encolha
+            
+            newCell.appendChild(input);
+        });
+
+        const actionCell = newRow.insertCell();
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.textContent = 'Remover';
+        removeBtn.classList.add('btn', 'btn-danger', 'btn-sm');
+        removeBtn.onclick = function() { tbody.removeChild(newRow); };
+        actionCell.appendChild(removeBtn);
+        rowCount++;
+    }
+
+    document.getElementById('add-row-btn').addEventListener('click', adicionarLinha);
+
+    document.getElementById('modelo').addEventListener('change', function() {
+        const modeloId = this.value;
+        const container = document.getElementById('tabela-dinamica-container');
+        const thead = document.getElementById('tabela-dinamica-head');
+        const tbody = document.getElementById('tabela-dinamica-body');
+        
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+        rowCount = 0;
+
+        if (modeloId && modeloId !== '0') {
+            container.classList.remove('d-none');
+            fetch(`/api/modelo/${modeloId}/campos`)
+                .then(response => response.json())
+                .then(campos => {
+                    camposDoModelo = campos; // Salva os campos globalmente
+                    const headerRow = thead.insertRow();
+                    campos.forEach(campo => {
+                        const th = document.createElement('th');
+                        th.textContent = campo.nome_campo;
+                        if (campo.obrigatorio) th.textContent += ' *';
+                        headerRow.appendChild(th);
+                    });
+                    const actionTh = document.createElement('th');
+                    actionTh.textContent = 'Ação';
+                    headerRow.appendChild(actionTh);
+                    adicionarLinha(); // Adiciona a primeira linha automaticamente
+                });
+        } else {
+            container.classList.add('d-none');
+            camposDoModelo = []; // Limpa os campos
+        }
+    });
+
+    // --- SCRIPT PARA FILTRAR COLABORADORES POR SETOR ---
+    document.getElementById('setor_destinatario').addEventListener('change', function() {
+        const setorId = this.value;
+        const colabSelect = document.getElementById('colaborador_destinatario');
+        
+        colabSelect.innerHTML = '<option value="0">--- Nenhum ---</option>';
+
+        if (setorId) {
+            fetch(`/api/setor/${setorId}/colaboradores`)
+                .then(response => response.json())
+                .then(colaboradores => {
+                    colaboradores.forEach(colab => {
+                        const option = document.createElement('option');
+                        option.value = colab.id;
+                        option.textContent = colab.nome;
+                        colabSelect.appendChild(option);
+                    });
+                });
+        }
+    });
+    // Dispara o evento na carga da página para popular o campo se um setor já estiver selecionado
+    document.getElementById('setor_destinatario').dispatchEvent(new Event('change'));
+
+    // --- SCRIPT PARA AUTOCOMPLETE DE FORNECEDORES ---
+    const fornecedorBuscaInput = document.getElementById('fornecedor_busca');
+    const fornecedorCodHidden = document.getElementById('fornecedor_ext_cod_hidden');
+    const fornecedorNomeHidden = document.getElementById('fornecedor_ext_nome_hidden');
+    const fornecedorResultsDiv = document.getElementById('fornecedor_results');
+    let searchTimeout;
+
+    fornecedorBuscaInput.addEventListener('input', function() {
+        const term = this.value;
+        clearTimeout(searchTimeout);
+        fornecedorResultsDiv.innerHTML = ''; // Limpa resultados antigos
+        fornecedorCodHidden.value = '';     // Limpa valor selecionado
+        fornecedorNomeHidden.value = '';    // Limpa valor selecionado
+
+        if (term.length < 2) {
+            return; // Não busca com menos de 2 caracteres
+        }
+
+        // Adiciona um spinner de loading
+        fornecedorResultsDiv.innerHTML = '<a class="list-group-item list-group-item-action disabled text-center"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Buscando...</a>';
+
+        searchTimeout = setTimeout(() => {
+            fetch(`/api/buscar_fornecedores?term=${encodeURIComponent(term)}`)
+                .then(response => response.json())
+                .then(data => {
+                    fornecedorResultsDiv.innerHTML = ''; // Limpa o spinner
+                    if (data.length > 0) {
+                        data.forEach(item => {
+                            const a = document.createElement('a');
+                            a.href = '#';
+                            a.classList.add('list-group-item', 'list-group-item-action');
+                            a.textContent = item.text;
+                            a.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                fornecedorBuscaInput.value = item.text; // Mostra o texto selecionado
+                                fornecedorCodHidden.value = item.id;   // Guarda o código no hidden
+                                fornecedorNomeHidden.value = item.nome; // Guarda o nome no hidden
+                                fornecedorResultsDiv.innerHTML = '';   // Esconde a lista
+                            });
+                            fornecedorResultsDiv.appendChild(a);
+                        });
+                    } else {
+                        // Mensagem de "nenhum resultado"
+                        const div = document.createElement('a');
+                        div.classList.add('list-group-item', 'list-group-item-action', 'disabled');
+                        div.textContent = 'Nenhum fornecedor encontrado.';
+                        fornecedorResultsDiv.appendChild(div);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na busca de fornecedores:', error);
+                    fornecedorResultsDiv.innerHTML = '<a class="list-group-item list-group-item-danger disabled">Erro ao buscar.</a>';
+                });
+        }, 300); // Espera 300ms após digitar para buscar
+    });
+
+    // Esconder resultados se clicar fora
+    document.addEventListener('click', function(event) {
+        if (!fornecedorBuscaInput.contains(event.target) && !fornecedorResultsDiv.contains(event.target)) {
+            fornecedorResultsDiv.innerHTML = '';
+        }
+    });
+
+</script>
+
+<script>
+    // --- SCRIPT DE SALVAR RASCUNHO (ATUALIZADO) ---
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+        const rascunhoKey = 'rascunhoProtocolo';
+
+        // --- 1. FUNÇÃO PARA CARREGAR O RASCUNHO ---
+        function carregarRascunho() {
+            const rascunhoSalvo = localStorage.getItem(rascunhoKey);
+            if (rascunhoSalvo) {
+                if (confirm('Encontramos um rascunho não salvo. Deseja restaurá-lo?')) {
+                    const dados = JSON.parse(rascunhoSalvo);
+                    
+                    // Popula os campos do formulário principal
+                    document.getElementById('assunto').value = dados.assunto || '';
+                    document.getElementById('data_vencimento').value = dados.data_vencimento || '';
+                    document.getElementById('setor_destinatario').value = dados.setor_destinatario || '';
+                    document.getElementById('fornecedor_busca').value = dados.fornecedor_busca || '';
+                    document.getElementById('fornecedor_ext_cod_hidden').value = dados.fornecedor_ext_cod || '';
+                    document.getElementById('fornecedor_ext_nome_hidden').value = dados.fornecedor_ext_nome || '';
+                    document.getElementById('is_externo').checked = dados.is_externo || false;
+                    document.getElementById('descricao').value = dados.descricao || '';
+                    
+                    // Dispara o evento 'change' no setor para carregar os colaboradores
+                    document.getElementById('setor_destinatario').dispatchEvent(new Event('change'));
+                    
+                    // Restaura o modelo e dispara o 'change' para construir a tabela
+                    document.getElementById('modelo').value = dados.modelo_id || '0';
+                    document.getElementById('modelo').dispatchEvent(new Event('change'));
+
+                    // Aguarda um momento para os selects e a tabela serem populados
+                    setTimeout(() => {
+                        // Restaura o colaborador
+                        document.getElementById('colaborador_destinatario').value = dados.colaborador_destinatario || '0';
+
+                        // Popula a tabela
+                        if (dados.tabela_dados && dados.tabela_dados.length > 0) {
+                            const tbody = document.getElementById('tabela-dinamica-body');
+                            
+                            // A primeira linha (linha 0) já foi criada pelo 'change' event. Vamos preenchê-la.
+                            const primeiraLinhaSalva = dados.tabela_dados[0];
+                            if (primeiraLinhaSalva) {
+                                for (const [nomeCampo, valor] of Object.entries(primeiraLinhaSalva)) {
+                                    const inputName = `${nomeCampo}-0`; // Índice 0
+                                    const input = tbody.querySelector(`[name="${inputName}"]`);
+                                    if (input) {
+                                        input.value = valor;
+                                    }
+                                }
+                            }
+
+                            // Adiciona e preenche as linhas restantes (da 2ª em diante)
+                            for (let i = 1; i < dados.tabela_dados.length; i++) {
+                                adicionarLinha(); // Adiciona uma nova linha (que incrementa rowCount)
+                                
+                                const linhaSalva = dados.tabela_dados[i];
+                                const linhaAtualIndex = rowCount - 1; // Índice da linha que acabamos de adicionar
+                                
+                                for (const [nomeCampo, valor] of Object.entries(linhaSalva)) {
+                                    const inputName = `${nomeCampo}-${linhaAtualIndex}`;
+                                    const input = tbody.querySelector(`[name="${inputName}"]`);
+                                    if (input) {
+                                        input.value = valor;
+                                    }
+                                }
+                            }
+                        }
+                    }, 1000); // 1s de espera para garantir que a API e a criação da 1ª linha terminaram
+                
+                } else {
+                    // Se o usuário não quiser restaurar, limpa o rascunho
+                    localStorage.removeItem(rascunhoKey);
+                }
+            }
+        }
+
+        // --- 2. FUNÇÃO PARA SALVAR O RASCUNHO ---
+        function salvarRascunho() {
+            const dados = {
+                assunto: document.getElementById('assunto').value,
+                data_vencimento: document.getElementById('data_vencimento').value,
+                setor_destinatario: document.getElementById('setor_destinatario').value,
+                fornecedor_busca: document.getElementById('fornecedor_busca').value,
+                fornecedor_ext_cod: document.getElementById('fornecedor_ext_cod_hidden').value,
+                fornecedor_ext_nome: document.getElementById('fornecedor_ext_nome_hidden').value,
+                colaborador_destinatario: document.getElementById('colaborador_destinatario').value,
+                is_externo: document.getElementById('is_externo').checked,
+                descricao: document.getElementById('descricao').value,
+                modelo_id: document.getElementById('modelo').value // Salva o modelo selecionado
+            };
+
+            // Salva os dados da tabela
+            const tabelaLinhas = document.querySelectorAll('#tabela-dinamica-body tr');
+            const tabelaDados = [];
+            
+            // `camposDoModelo` é a variável global que é definida quando um modelo é selecionado
+            if (camposDoModelo.length > 0) { 
+                tabelaLinhas.forEach((linha, rowIndex) => {
+                    const linhaDados = {};
+                    // Usamos a variável global `camposDoModelo` para saber quais campos procurar
+                    camposDoModelo.forEach(campo => {
+                        const inputName = `${campo.nome_campo}-${rowIndex}`; // O nome é baseado no rowIndex
+                        const input = linha.querySelector(`[name="${inputName}"]`);
+                        if (input) {
+                            linhaDados[campo.nome_campo] = input.value;
+                        }
+                    });
+                    
+                    // A linha só é válida se tiver dados
+                    if (Object.keys(linhaDados).length > 0) {
+                        tabelaDados.push(linhaDados);
+                    }
+                });
+            }
+            
+            dados.tabela_dados = tabelaDados; // Adiciona os dados da tabela ao rascunho
+            
+            localStorage.setItem(rascunhoKey, JSON.stringify(dados));
+        }
+
+        // --- 3. EVENT LISTENERS ---
+        
+        // Tenta carregar o rascunho quando a página abrir
+        carregarRascunho();
+
+        // Salva o rascunho a cada 5 segundos
+        setInterval(salvarRascunho, 5000);
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>{{ title }}</h1>
+        {# Botão de adicionar foi removido, pois esta é uma consulta #}
+    </div>
+
+    <div class="alert alert-info" role="alert">
+      Estes dados são apenas para consulta e vêm de uma base externa. Não é possível adicionar, editar ou excluir por aqui.
+    </div>
+
+    <table class="table table-hover table-sm">
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Loja</th>
+                <th>Nome/Razão Social</th>
+                <th>CNPJ/CPF</th>
+                <th>Município</th>
+                <th>UF</th>
+            </tr>
+        </thead>
+        <tbody>
+            {# O 'f' agora é um dicionário, acessamos por chaves #}
+            {% for f in fornecedores %}
+            <tr>
+                <td>{{ f.A2_COD }}</td>
+                <td>{{ f.A2_LOJA }}</td>
+                <td>{{ f.A2_NOME }}</td>
+                <td>{{ f.A2_CGC }}</td>
+                <td>{{ f.A2_MUN }}</td>
+                <td>{{ f.A2_EST }}</td>
+                {# Botões de Ação removidos #}
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center">Nenhum fornecedor encontrado na base externa ou erro na consulta.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary mt-3">Voltar ao Painel</a>
+{% endblock %}

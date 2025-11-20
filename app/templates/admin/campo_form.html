@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1>{{ title }}</h1>
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" action="">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.nome_campo.label(class="form-label") }}
+                    {{ form.nome_campo(class="form-control") }}
+                </div>
+                <div class="mb-3">
+                    {{ form.tipo_campo.label(class="form-label") }}
+                    {{ form.tipo_campo(class="form-select") }}
+                </div>
+                <div class="mb-3 form-check">
+                    {{ form.obrigatorio(class="form-check-input") }}
+                    {{ form.obrigatorio.label(class="form-check-label") }}
+                </div>
+                {{ form.submit(class="btn btn-success") }}
+                <a href="{{ url_for('main.design_modelo', modelo_id=request.view_args.modelo_id) }}" class="btn btn-outline-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+{% endblock %}

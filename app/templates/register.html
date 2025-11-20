@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Registro de Colaborador{% endblock %}
+
+{% block content %}
+    <h2>Registrar Novo Colaborador</h2>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <div class="mb-3">
+            {{ form.nome.label(class="form-label") }}
+            {{ form.nome(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.email.label(class="form-label") }}
+            {{ form.email(class="form-control") }}
+            {% if form.email.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.email.errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.setor.label(class="form-label") }}
+            {{ form.setor(class="form-select") }}
+        </div>
+        <div class="mb-3">
+            {{ form.password.label(class="form-label") }}
+            {{ form.password(class="form-control") }}
+        </div>
+        <div class="mb-3">
+            {{ form.confirm_password.label(class="form-label") }}
+            {{ form.confirm_password(class="form-control") }}
+            {% if form.confirm_password.errors %}
+                <div class="invalid-feedback d-block">
+                    {% for error in form.confirm_password.errors %}{{ error }}{% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+    <a href="{{ url_for('main.login') }}">Já tem uma conta? Faça o login</a>
+{% endblock %}

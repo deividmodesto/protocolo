@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Setores{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gerenciar Setores</h1>
+        <a href="{{ url_for('main.adicionar_setor') }}" class="btn btn-primary">Adicionar Novo Setor</a>
+    </div>
+
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nome do Setor</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for setor in setores %}
+            <tr>
+                <td>{{ setor.id }}</td>
+                <td>{{ setor.nome }}</td>
+                <td>
+                    <a href="{{ url_for('main.editar_setor', setor_id=setor.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+                    <form action="{{ url_for('main.excluir_setor', setor_id=setor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este setor?');">
+                        {{ form_excluir.hidden_tag() }}
+                        <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary mt-3">Voltar ao Painel</a>
+{% endblock %}

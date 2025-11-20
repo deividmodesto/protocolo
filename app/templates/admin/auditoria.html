@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1>Trilha de Auditoria do Sistema</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.relatorio_auditoria') }}">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        {{ form.protocolo_numero.label(class="form-label") }}
+                        {{ form.protocolo_numero(class="form-control") }}
+                    </div>
+                    <div class="col-md-3">
+                        {{ form.colaborador.label(class="form-label") }}
+                        {{ form.colaborador(class="form-select") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.data_inicio.label(class="form-label") }}
+                        {{ form.data_inicio(class="form-control") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.data_fim.label(class="form-label") }}
+                        {{ form.data_fim(class="form-control") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.submit(class="btn btn-secondary w-100") }}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <table class="table table-sm table-striped">
+        <thead>
+            <tr>
+                <th>Data/Hora</th>
+                <th>Nº Protocolo</th>
+                <th>Ação Realizada</th>
+                <th>Autor da Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in pagination.items %}
+            <tr>
+                <td>{{ item.data_ocorrencia | localdatetime }}</td>
+                <td><a href="{{ url_for('main.protocolo_detalhe', protocolo_id=item.protocolo.id) }}">{{ item.protocolo.numero_protocolo }}</a></td>
+                <td>{{ item.descricao }}</td>
+                <td>{{ item.colaborador.nome }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="text-center">Nenhum registro de auditoria encontrado com os filtros atuais.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if pagination.pages > 1 %}
+    <nav>
+        <ul class="pagination justify-content-center mt-4">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('main.relatorio_auditoria', page=pagination.prev_num, **request.args) }}">Anterior</a>
+            </li>
+            {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=2) %}
+                {% if page_num %}
+                    <li class="page-item {% if pagination.page == page_num %}active{% endif %}">
+                        <a class="page-link" href="{{ url_for('main.relatorio_auditoria', page=page_num, **request.args) }}">{{ page_num }}</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('main.relatorio_auditoria', page=pagination.next_num, **request.args) }}">Próxima</a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary mt-3">Voltar ao Painel</a>
+{% endblock %}

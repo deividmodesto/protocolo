@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1>Resultado para a Chave:</h1>
+    <p class="lead">{{ chave_acesso }}</p>
+
+    <div class="alert alert-info">
+        Clique nos botões abaixo para fazer o download dos ficheiros. A geração pode demorar alguns segundos.
+    </div>
+
+    <a href="{{ url_for('main.download_nfe_xml', chave_acesso=chave_acesso) }}" class="btn btn-success" target="_blank">
+        <i class="bi bi-filetype-xml"></i> Download XML
+    </a>
+    <a href="{{ url_for('main.download_nfe_pdf', chave_acesso=chave_acesso) }}" class="btn btn-danger" target="_blank">
+        <i class="bi bi-file-pdf"></i> Gerar PDF (DANFE)
+    </a>
+
+    <a href="{{ url_for('main.consultar_nfe') }}" class="btn btn-outline-secondary mt-3">Consultar outra nota</a>
+{% endblock %}

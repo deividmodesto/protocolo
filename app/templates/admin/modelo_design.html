@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1>Design do Modelo: {{ modelo.nome }}</h1>
+    <p>{{ modelo.descricao }}</p>
+
+    <div class="row">
+        <div class="col-md-7">
+            <h4>Campos Existentes (Arraste para reordenar)</h4>
+            
+            {# Adicione um id à lista <ul> para que o JavaScript a encontre #}
+            <ul class="list-group" id="sortable-fields">
+                {% for campo in modelo.campos %}
+                {# Adicione o atributo data-id a cada item <li> #}
+                <li class="list-group-item d-flex justify-content-between align-items-center" data-id="{{ campo.id }}" style="cursor: grab;">
+                    <div>
+                        <i class="bi bi-grip-vertical me-2"></i> {# Ícone para indicar que é arrastável #}
+                        <strong>{{ campo.nome_campo }}</strong>
+                        <span class="badge bg-secondary">{{ campo.tipo_campo }}</span>
+                        {% if campo.obrigatorio %}<span class="badge bg-danger">Obrigatório</span>{% endif %}
+                    </div>
+                    <div>
+                        <a href="{{ url_for('main.editar_campo_modelo', modelo_id=modelo.id, campo_id=campo.id) }}" class="btn btn-sm btn-secondary">Editar</a>
+                        <form action="{{ url_for('main.excluir_campo_modelo', campo_id=campo.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Tem certeza que deseja excluir este campo?');">
+                            {{ form_excluir.hidden_tag() }}
+                            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+                        </form>
+                    </div>
+                </li>
+                {% else %}
+                <li class="list-group-item">Nenhum campo adicionado a este modelo ainda.</li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="card-title">Adicionar Novo Campo</h4>
+                    <form method="POST" action="">
+                        {{ form.hidden_tag() }}
+                        <div class="mb-3">
+                            {{ form.nome_campo.label(class="form-label") }}
+                            {{ form.nome_campo(class="form-control") }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.tipo_campo.label(class="form-label") }}
+                            {{ form.tipo_campo(class="form-select") }}
+                        </div>
+                        <div class="mb-3 form-check">
+                            {{ form.obrigatorio(class="form-check-input") }}
+                            {{ form.obrigatorio.label(class="form-check-label") }}
+                        </div>
+                        {{ form.submit(class="btn btn-primary w-100") }}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <a href="{{ url_for('main.listar_modelos') }}" class="btn btn-outline-secondary mt-4">Voltar para a Lista de Modelos</a>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }} {# Importante para manter os scripts do base.html #}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const sortableList = document.getElementById('sortable-fields');
+    if (sortableList) {
+        new Sortable(sortableList, {
+            animation: 150,
+            handle: '.bi-grip-vertical', // Define o ícone como a "pega" para arrastar
+            onEnd: function (evt) {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                const field_ids = [];
+                // Percorre os itens da lista na nova ordem e extrai os seus IDs
+                sortableList.querySelectorAll('li').forEach(item => {
+                    if (item.dataset.id) {
+                        field_ids.push(item.dataset.id);
+                    }
+                });
+
+                // Envia a nova ordem para o servidor
+                fetch('/api/modelo/update_order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({ field_ids: field_ids })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Ordem salva com sucesso!');
+                    } else {
+                        alert('Ocorreu um erro ao salvar a nova ordem.');
+                        console.error('Erro:', data.message);
+                    }
+                });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

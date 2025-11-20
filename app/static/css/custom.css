@@ -1,0 +1,104 @@
+/*
+  Paleta de Cores:
+  - Principal: #012E23 (Verde Escuro)
+  - Secundária 1: #05B540 (Verde Claro)
+  - Secundária 2: #FFAA00 (Amarelo/Laranja)
+  - Secundária 3: #FF6600 (Laranja)
+*/
+
+/* Muda a cor da Barra de Navegação */
+.navbar.bg-dark {
+    background-color: #012E23 !important; /* Cor Principal */
+}
+
+/* Muda a cor dos links principais */
+a {
+    color: #05B540; /* Verde Claro */
+}
+
+a:hover {
+    color: #048a31; /* Verde Claro um pouco mais escuro */
+}
+
+/* Muda a cor dos botões primários (Criar, Salvar, etc.) */
+.btn-primary {
+    background-color: #012E23; /* Cor Principal */
+    border-color: #012E23;
+}
+
+.btn-primary:hover {
+    background-color: #001a14;
+    border-color: #001a14;
+}
+
+/* Muda a cor dos botões secundários (Cancelar, Editar) */
+.btn-secondary {
+    background-color: #8c8c8c;
+    border-color: #8c8c8c;
+}
+
+/* Muda a cor dos botões de sucesso (Tramitar) */
+.btn-success {
+    background-color: #05B540; /* Verde Claro */
+    border-color: #05B540;
+}
+
+.btn-success:hover {
+    background-color: #048a31;
+    border-color: #048a31;
+}
+
+/* Badge de status "Aberto" para a cor principal */
+.badge.bg-primary {
+    background-color: #012E23 !important; /* Cor Principal */
+}
+
+/* Outras cores de badges */
+.badge.bg-warning {
+    background-color: #FFAA00 !important; /* Amarelo/Laranja */
+    color: #000 !important;
+}
+
+.badge.bg-danger {
+    background-color: #FF6600 !important; /* Laranja */
+}
+
+/* ========================================= */
+/* ESTILOS PARA O MODO ESCURO (DARK MODE)    */
+/* ========================================= */
+[data-bs-theme="dark"] {
+    /* Faz o fundo ser um pouco mais claro que o preto puro */
+    --bs-body-bg: #1c1c1c;
+
+    /* Muda a cor da navbar no modo escuro para um tom um pouco mais claro */
+    .navbar.bg-dark {
+        background-color: #0a3d30 !important;
+    }
+
+    /* Muda a cor dos links para o seu verde claro, para melhor contraste */
+    a {
+        color: #05B540;
+    }
+    
+    a:hover {
+        color: #07e052;
+    }
+
+    /* Deixa o botão primário com seu verde claro no modo escuro */
+    .btn-primary {
+        background-color: #05B540;
+        border-color: #05B540;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background-color: #048a31;
+        border-color: #048a31;
+    }
+
+    .card {
+        background-color: #2a2a2a;
+        border-color: #444;
+    }
+}
+

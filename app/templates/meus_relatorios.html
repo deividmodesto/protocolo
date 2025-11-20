@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1 class="mb-4">Meus Relatórios</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Protocolos que Enviei e Aguardam Resposta</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Modelo</th> <th>Assunto</th>
+                        <th>Setor Destino</th>
+                        <th>Status</th>
+                        <th>Data Criação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for protocolo in enviados %}
+                    <tr>
+                        <td>{{ protocolo.numero_protocolo }}</td>
+                        <td>
+                            {% if protocolo.modelo_usado %}
+                                <span class="badge bg-secondary">{{ protocolo.modelo_usado.nome }}</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ protocolo.assunto }}</td>
+                        <td>{{ protocolo.setor_destinatario.nome }}</td>
+                        <td><span class="badge bg-warning text-dark">{{ protocolo.status }}</span></td>
+                        <td>{{ protocolo.data_criacao | localdatetime }}</td>
+                        <td><a href="{{ url_for('main.protocolo_detalhe', protocolo_id=protocolo.id) }}" class="btn btn-sm btn-outline-secondary">Ver</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center">Você não tem protocolos pendentes que foram criados por você.</td> </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5>Minha Caixa de Entrada de Tarefas</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th>Número</th>
+                        <th>Modelo</th> <th>Assunto</th>
+                        <th>Criado Por</th>
+                        <th>Status</th>
+                        <th>Data Criação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for protocolo in recebidos %}
+                    <tr>
+                        <td>{{ protocolo.numero_protocolo }}</td>
+                        <td>
+                            {% if protocolo.modelo_usado %}
+                                <span class="badge bg-secondary">{{ protocolo.modelo_usado.nome }}</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ protocolo.assunto }}</td>
+                        <td>{{ protocolo.criado_por.nome }}</td>
+                        <td><span class="badge bg-primary">{{ protocolo.status }}</span></td>
+                        <td>{{ protocolo.data_criacao | localdatetime }}</td>
+                        <td><a href="{{ url_for('main.protocolo_detalhe', protocolo_id=protocolo.id) }}" class="btn btn-sm btn-primary">Analisar / Tramitar</a></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center">Não há tarefas pendentes na sua caixa de entrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

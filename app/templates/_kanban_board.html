@@ -1,0 +1,118 @@
+<style>
+    .kanban-board {
+        display: flex;
+        gap: 15px;
+        overflow-x: auto;
+        padding-bottom: 15px;
+    }
+    .kanban-column {
+    flex: 1 1 280px; /* Permite crescer e encolher, com base de 280px */
+    min-width: 250px; /* Garante que a coluna não fique muito espremida */
+    background-color: #f4f5f7;
+    border-radius: 5px;
+    display: flex; /* Adicionado para melhor estrutura interna */
+    flex-direction: column; /* Adicionado para melhor estrutura interna */
+}
+    .kanban-column-header {
+        padding: 10px;
+        font-weight: bold;
+        border-bottom: 2px solid #ddd;
+    }
+    .kanban-cards {
+        padding: 10px;
+        min-height: 200px;
+    }
+    .kanban-card {
+        background-color: #fff;
+        border-radius: 3px;
+        padding: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+        font-size: 0.9em;
+        cursor: grab; /* Indica que o card é arrastável */
+    }
+    .kanban-card a {
+        text-decoration: none;
+        color: inherit;
+    }
+    .card-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+    .card-meta {
+        color: #666;
+        font-size: 0.85em;
+    }
+</style>
+
+<div class="kanban-board">
+    {% for status, protocolos in protocolos_agrupados.items() %}
+        <div class="kanban-column">
+            <div class="kanban-column-header">
+                {{ status }} <span class="badge bg-secondary rounded-pill">{{ protocolos|length }}</span>
+            </div>
+            <div class="kanban-cards" data-status="{{ status }}">
+                {% for protocolo in protocolos %}
+                    <div class="kanban-card" data-protocolo-id="{{ protocolo.id }}">
+                        <a href="{{ url_for('main.protocolo_detalhe', protocolo_id=protocolo.id) }}">
+                            <div class="card-title">{{ protocolo.assunto }}</div>
+                            <div class="card-meta">
+                                <strong>#{{ protocolo.numero_protocolo }}</strong>
+                                <div>Para: {{ protocolo.setor_destinatario.nome }}</div>
+                                {% if sla_status(protocolo.data_vencimento, protocolo.status) %}
+                                    {% set sla = sla_status(protocolo.data_vencimento, protocolo.status) %}
+                                    <div style="color: {{ 'red' if sla.cor == 'danger' else 'orange' }};">
+                                        {{ sla.texto }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </a>
+                    </div>
+                {% endfor %}
+                {% if not protocolos %}
+                    <p class="text-muted text-center small mt-3">Nenhum protocolo neste status.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        const columns = document.querySelectorAll('.kanban-cards');
+        
+        columns.forEach(column => {
+            new Sortable(column, {
+                group: 'kanban',
+                animation: 150,
+                onEnd: function (evt) {
+                    const protocoloId = evt.item.dataset.protocoloId;
+                    const novoStatus = evt.to.dataset.status;
+
+                    fetch('/api/protocolo/update_status', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': csrfToken
+                        },
+                        body: JSON.stringify({
+                            protocolo_id: protocoloId,
+                            novo_status: novoStatus
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Status atualizado com sucesso!');
+                            // Recarrega a página para atualizar os contadores e a ordem
+                            window.location.reload(); 
+                        } else {
+                            alert('Ocorreu um erro ao atualizar o status.');
+                        }
+                    });
+                }
+            });
+        });
+    });
+</script>

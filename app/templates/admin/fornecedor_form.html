@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <h1>{{ title }}</h1>
+    <form method="POST" action="">
+        {{ form.hidden_tag() }}
+        <div class="card">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        {{ form.razao_social.label(class="form-label") }}
+                        {{ form.razao_social(class="form-control") }}
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        {{ form.nome_fantasia.label(class="form-label") }}
+                        {{ form.nome_fantasia(class="form-control") }}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        {{ form.cnpj.label(class="form-label") }}
+                        {{ form.cnpj(class="form-control") }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.contato_nome.label(class="form-label") }}
+                        {{ form.contato_nome(class="form-control") }}
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        {{ form.contato_telefone.label(class="form-label") }}
+                        {{ form.contato_telefone(class="form-control") }}
+                    </div>
+                </div>
+                <div class="mb-3">
+                    {{ form.contato_email.label(class="form-label") }}
+                    {{ form.contato_email(class="form-control") }}
+                </div>
+                <div class="mt-4">
+                    {{ form.submit(class="btn btn-success") }}
+                    <a href="{{ url_for('main.listar_fornecedores') }}" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </div>
+        </div>
+    </form>
+{% endblock %}

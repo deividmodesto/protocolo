@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Gerenciar Perfis</h1>
+        <a href="{{ url_for('main.adicionar_perfil') }}" class="btn btn-primary">Adicionar Novo Perfil</a>
+    </div>
+    <ul class="list-group">
+        {% for perfil in perfis %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ perfil.nome }}
+            <a href="{{ url_for('main.editar_perfil', perfil_id=perfil.id) }}" class="btn btn-sm btn-secondary">Editar Permissões</a>
+        </li>
+        {% endfor %}
+    </ul>
+    <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-outline-secondary mt-3">Voltar ao Painel</a>
+{% endblock %}

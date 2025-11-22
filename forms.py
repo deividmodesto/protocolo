@@ -29,4 +29,5 @@ class ProtocoloForm(FlaskForm):
     assunto = StringField('Assunto', validators=[DataRequired()])
     setor_destinatario = SelectField('Encaminhar para o Setor', coerce=int, validators=[DataRequired()])
     descricao = TextAreaField('Descrição detalhada', validators=[DataRequired()])
+    habilita_conferencia = BooleanField('Habilitar Conferência de Linhas (Checklist)')
     submit = SubmitField('Criar Protocolo')

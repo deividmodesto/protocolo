@@ -69,6 +69,7 @@ class ProtocoloModelo(db.Model):
     nome = db.Column(db.String(150), nullable=False)
     descricao = db.Column(db.Text)
     setor_proprietario_id = db.Column(db.Integer, db.ForeignKey('Setor.id'), nullable=False)
+    habilita_conferencia = db.Column(db.Boolean, default=False, nullable=False, server_default=sa.text('0'))
     campos = db.relationship('CampoModelo', backref='modelo', lazy=True, cascade="all, delete-orphan", order_by='CampoModelo.ordem')
     protocolos_usados = db.relationship('Protocolo', backref='modelo_usado', lazy=True)
 

@@ -4,14 +4,27 @@
     <h1>{{ title }}</h1>
     <form method="POST" action="">
         {{ form.hidden_tag() }}
+        
         <div class="mb-3">
             {{ form.nome.label(class="form-label") }}
             {{ form.nome(class="form-control") }}
         </div>
+        
         <div class="mb-3">
             {{ form.descricao.label(class="form-label") }}
             {{ form.descricao(class="form-control", rows=3) }}
         </div>
+
+        {# --- NOVO CAMPO DE CHECKBOX ADICIONADO --- #}
+        <div class="mb-3 form-check">
+            {{ form.habilita_conferencia(class="form-check-input") }}
+            {{ form.habilita_conferencia.label(class="form-check-label") }}
+            <div class="form-text">
+                Se marcado, exibe uma opção para conferir cada linha individualmente no detalhe do protocolo.
+            </div>
+        </div>
+        {# ----------------------------------------- #}
+        
         <div class="mb-3">
             {{ form.submit(class="btn btn-success") }}
             <a href="{{ url_for('main.listar_modelos') }}" class="btn btn-outline-secondary">Cancelar</a>

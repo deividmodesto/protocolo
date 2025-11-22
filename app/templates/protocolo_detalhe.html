@@ -3,17 +3,17 @@
 {% block title %}Detalhes do Protocolo {{ protocolo.numero_protocolo }}{% endblock %}
 
 {% block content %}
-      <div class="d-flex justify-content-between align-items-center mb-3">
-          <h2>Protocolo: {{ protocolo.numero_protocolo }}</h2>
-          <div class="d-flex align-items-center">
-              <a href="{{ url_for('main.gerar_protocolo_pdf', protocolo_id=protocolo.id) }}" class="btn btn-danger me-3" target="_blank">Gerar PDF</a>
-              
-              {% set status_colors = {'Aberto': 'primary', 'Em Análise': 'warning', 'Pendente': 'secondary', 'Finalizado': 'success', 'Arquivado': 'dark'} %}
-              <span class="badge bg-{{ status_colors.get(protocolo.status, 'info') }} fs-6">{{ protocolo.status }}</span>
-          </div>
-      </div>
-      
-      <div class="card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Protocolo: {{ protocolo.numero_protocolo }}</h2>
+        <div class="d-flex align-items-center">
+            <a href="{{ url_for('main.gerar_protocolo_pdf', protocolo_id=protocolo.id) }}" class="btn btn-danger me-3" target="_blank">Gerar PDF</a>
+            
+            {% set status_colors = {'Aberto': 'primary', 'Em Análise': 'warning', 'Pendente': 'secondary', 'Finalizado': 'success', 'Arquivado': 'dark'} %}
+            <span class="badge bg-{{ status_colors.get(protocolo.status, 'info') }} fs-6">{{ protocolo.status }}</span>
+        </div>
+    </div>
+    
+    <div class="card">
         <div class="card-header">
             Informações Gerais
         </div>
@@ -22,131 +22,209 @@
             <p><strong>Criado em:</strong> {{ protocolo.data_criacao | localdatetime }}</p>
             <p><strong>Criado por:</strong> {{ protocolo.criado_por.nome }}</p>
             <p><strong>Setor de Destino:</strong> {{ protocolo.setor_destinatario.nome }}</p>
-{% if protocolo.colaborador_destinatario %}
-  <p><strong>Direcionado para:</strong> {{ protocolo.colaborador_destinatario.nome }}</p>
-{% endif %}
+            {% if protocolo.colaborador_destinatario %}
+                <p><strong>Direcionado para:</strong> {{ protocolo.colaborador_destinatario.nome }}</p>
+            {% endif %}
 
-{% if protocolo.fornecedor %}
-    <p><strong>Fornecedor:</strong> {{ protocolo.fornecedor.razao_social }}</p>
-{% endif %}
+            {% if protocolo.fornecedor %}
+                <p><strong>Fornecedor:</strong> {{ protocolo.fornecedor.razao_social }}</p>
+            {% endif %}
 
-{% if protocolo.data_vencimento %}
-    {% set sla = sla_status(protocolo.data_vencimento, protocolo.status) %}
-    <p><strong>Prazo Final:</strong> {{ protocolo.data_vencimento.strftime('%d/%m/%Y') }}
-        {% if sla %}
-          <span class="badge bg-{{ sla.cor }} ms-2">{{ sla.texto }}</span>
-        {% endif %}
-    </p>
-{% endif %}
-<hr>
+            {% if protocolo.data_vencimento %}
+                {% set sla = sla_status(protocolo.data_vencimento, protocolo.status) %}
+                <p><strong>Prazo Final:</strong> {{ protocolo.data_vencimento.strftime('%d/%m/%Y') }}
+                    {% if sla %}
+                        <span class="badge bg-{{ sla.cor }} ms-2">{{ sla.texto }}</span>
+                    {% endif %}
+                </p>
+            {% endif %}
+            <hr>
             <h6>Descrição:</h6>
             <p>{{ protocolo.descricao }}</p>
         </div>
-      </div>
+    </div>
 
-        {% if protocolo.dados_preenchidos and protocolo.dados_preenchidos is iterable and not protocolo.dados_preenchidos is string %}
-      <div class="card mt-4">
+    {# --- INÍCIO DA TABELA DINÂMICA ATUALIZADA --- #}
+    {% if protocolo.dados_preenchidos and protocolo.dados_preenchidos is iterable and not protocolo.dados_preenchidos is string %}
+    <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Registros do Modelo: {{ protocolo.modelo_usado.nome }}</span>
+            {# Exibe badge se a conferência estiver habilitada no modelo #}
+            {% if protocolo.modelo_usado.habilita_conferencia %}
+                <span class="badge bg-info text-dark"><i class="bi bi-list-check"></i> Modo Conferência Ativo</span>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped table-bordered mb-0 table-hover">
+                    <thead>
+                        <tr>
+                            {# Cabeçalhos das colunas de dados #}
+                            {% for key in protocolo.dados_preenchidos[0].keys() %}
+                                {# Filtra chaves internas que começam com _ (como _conferido) para não exibir no cabeçalho #}
+                                {% if not key.startswith('_') %}
+                                    <th>{{ key }}</th>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {# Cabeçalho da coluna de Conferência (apenas se habilitado) #}
+                            {% if protocolo.modelo_usado.habilita_conferencia %}
+                                <th class="text-center" style="width: 100px;">Conferido</th>
+                            {% endif %}
+                            
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for linha in protocolo.dados_preenchidos %}
+                        {# Adiciona classe verde (table-success) se a linha já estiver conferida #}
+                        <tr class="linha-dados {% if linha.get('_conferido') %}table-success{% endif %}" id="linha-{{ loop.index0 }}">
+                            
+                            {# Células de dados #}
+                            {% for key, value in linha.items() %}
+                                {% if not key.startswith('_') %}
+                                    <td>{{ value }}</td>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {# Célula de Conferência #}
+                            {% if protocolo.modelo_usado.habilita_conferencia %}
+                                <td class="text-center align-middle">
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input btn-conferencia" type="checkbox" 
+                                               data-row-index="{{ loop.index0 }}" 
+                                               style="transform: scale(1.3); cursor: pointer;"
+                                               {% if linha.get('_conferido') %}checked{% endif %}>
+                                    </div>
+                                </td>
+                            {% endif %}
+                            
+                            {# Célula de Ações (Downloads) #}
+                            <td>
+                                {% if linha['Chave de acesso'] %}
+                                    <a href="{{ url_for('main.download_nfe_xml', chave_acesso=linha['Chave de acesso']) }}" class="btn btn-sm btn-success" title="Baixar XML" target="_blank">
+                                        <i class="bi bi-filetype-xml"></i>
+                                    </a>
+                                    <a href="{{ url_for('main.download_nfe_pdf', chave_acesso=linha['Chave de acesso']) }}" class="btn btn-sm btn-danger" title="Gerar PDF (DANFE)" target="_blank">
+                                        <i class="bi bi-file-pdf"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {# --- FIM DA TABELA DINÂMICA --- #}
+
+    <div class="card mt-4">
         <div class="card-header">
-          Registros do Modelo: {{ protocolo.modelo_usado.nome }}
+            Anexos
         </div>
         <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-sm table-striped table-bordered">
-              <thead>
-                <tr>
-                  {# Itera sobre as chaves da primeira linha para criar os cabeçalhos #}
-                  {% for key in protocolo.dados_preenchidos[0].keys() %}
-                    <th>{{ key }}</th>
-                  {% endfor %}
-                  <th>Ações</th> {# <-- NOVO CABEÇALHO ADICIONADO #}
-                </tr>
-              </thead>
-              <tbody>
-                {% for linha in protocolo.dados_preenchidos %}
-                <tr>
-                  {# Itera sobre os valores de cada linha para preencher as células #}
-                  {% for value in linha.values() %}
-                    <td>{{ value }}</td>
-                  {% endfor %}
-                  
-                  {# --- INÍCIO DA NOVA CÉLULA COM OS BOTÕES --- #}
-                  <td>
-                    {# 
-                      IMPORTANTE: Verifique se 'Chave de acesso' é o nome exato do seu campo.
-                      Se o nome for diferente (p. ex., "Chavedeacesso"), altere abaixo.
-                    #}
-                    {% if linha['Chave de acesso'] %}
-                      <a href="{{ url_for('main.download_nfe_xml', chave_acesso=linha['Chave de acesso']) }}" class="btn btn-sm btn-success" title="Baixar XML" target="_blank">
-                          <i class="bi bi-filetype-xml"></i>
-                      </a>
-                      <a href="{{ url_for('main.download_nfe_pdf', chave_acesso=linha['Chave de acesso']) }}" class="btn btn-sm btn-danger" title="Gerar PDF (DANFE)" target="_blank">
-                          <i class="bi bi-file-pdf"></i>
-                      </a>
-                    {% endif %}
-                  </td>
-                  {# --- FIM DA NOVA CÉLULA --- #}
-                  
-                </tr>
+            <ul class="list-group list-group-flush">
+                {% for anexo in protocolo.anexos %}
+                    <li class="list-group-item">
+                        <a href="{{ url_for('main.download_file', filename=anexo.caminho_arquivo) }}">{{ anexo.nome_arquivo }}</a>
+                    </li>
+                {% else %}
+                    <li class="list-group-item">Nenhum arquivo anexado.</li>
                 {% endfor %}
-              </tbody>
-            </table>
-          </div>
+            </ul>
         </div>
-      </div>
-      {% endif %}
+    </div>
 
-      <div class="card mt-4">
-        <div class="card-header">
-          Anexos
-        </div>
-        <div class="card-body">
-          <ul class="list-group list-group-flush">
-            {% for anexo in protocolo.anexos %}
-              <li class="list-group-item">
-                <a href="{{ url_for('main.download_file', filename=anexo.caminho_arquivo) }}">{{ anexo.nome_arquivo }}</a>
-              </li>
-            {% else %}
-              <li class="list-group-item">Nenhum arquivo anexado.</li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-
-      <div class="mt-4">
+    <div class="mt-4">
         <h3>Histórico de Tramitação</h3>
         <ul class="list-group">
-          {% for item in protocolo.historico|sort(attribute='data_ocorrencia', reverse=True) %}
-            <li class="list-group-item">
-              <p class="mb-1">{{ item.descricao }}</p>
-              <small class="text-muted">Por: {{ item.colaborador.nome }} em {{ item.data_ocorrencia | localdatetime }}</small>
-            </li>
-          {% else %}
-            <li class="list-group-item">Nenhum histórico de tramitação encontrado.</li>
-          {% endfor %}
+            {% for item in protocolo.historico|sort(attribute='data_ocorrencia', reverse=True) %}
+                <li class="list-group-item">
+                    <p class="mb-1">{{ item.descricao }}</p>
+                    <small class="text-muted">Por: {{ item.colaborador.nome }} em {{ item.data_ocorrencia | localdatetime }}</small>
+                </li>
+            {% else %}
+                <li class="list-group-item">Nenhum histórico de tramitação encontrado.</li>
+            {% endfor %}
         </ul>
-      </div>
+    </div>
 
-      {% if current_user.role == 'admin' or 
-            protocolo.setor_destinatario_id == current_user.setor_id or 
-            protocolo.colaborador_destinatario_id == current_user.id %}
-      <div class="card mt-4">
+    {% if current_user.role == 'admin' or 
+          protocolo.setor_destinatario_id == current_user.setor_id or 
+          protocolo.colaborador_destinatario_id == current_user.id %}
+    <div class="card mt-4">
         <div class="card-header">
-          Adicionar Despacho / Tramitar
+            Adicionar Despacho / Tramitar
         </div>
         <div class="card-body">
-          <form method="POST" action="{{ url_for('main.tramitar_protocolo', protocolo_id=protocolo.id) }}">
-            {{ form.hidden_tag() }}
-            <div class="mb-3">
-                {{ form.descricao.label(class="form-label") }}
-                {{ form.descricao(class="form-control", rows=3) }}
-            </div>
-            <div class="mb-3">
-                {{ form.novo_status.label(class="form-label") }}
-                {{ form.novo_status(class="form-select") }}
-            </div>
-            {{ form.submit(class="btn btn-success") }}
-          </form>
+            <form method="POST" action="{{ url_for('main.tramitar_protocolo', protocolo_id=protocolo.id) }}">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">
+                    {{ form.descricao.label(class="form-label") }}
+                    {{ form.descricao(class="form-control", rows=3) }}
+                </div>
+                <div class="mb-3">
+                    {{ form.novo_status.label(class="form-label") }}
+                    {{ form.novo_status(class="form-select") }}
+                </div>
+                {{ form.submit(class="btn btn-success") }}
+            </form>
         </div>
-      </div>
-      {% endif %}
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const checkboxes = document.querySelectorAll('.btn-conferencia');
+
+    checkboxes.forEach(chk => {
+        chk.addEventListener('change', function() {
+            const rowIndex = this.dataset.rowIndex;
+            const isChecked = this.checked;
+            const rowElement = document.getElementById(`linha-${rowIndex}`);
+
+            // Feedback visual imediato
+            if (isChecked) {
+                rowElement.classList.add('table-success');
+            } else {
+                rowElement.classList.remove('table-success');
+            }
+
+            // Chama a API para salvar o estado
+            fetch(`/api/protocolo/{{ protocolo.id }}/toggle_conferencia`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ row_index: parseInt(rowIndex) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert('Erro ao salvar conferência: ' + data.message);
+                    // Reverte visualmente em caso de erro
+                    this.checked = !isChecked;
+                    if (!isChecked) rowElement.classList.add('table-success');
+                    else rowElement.classList.remove('table-success');
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                alert('Erro de conexão ao tentar salvar a conferência.');
+                // Reverte estado visual
+                this.checked = !isChecked;
+                if (!isChecked) rowElement.classList.add('table-success');
+                else rowElement.classList.remove('table-success');
+            });
+        });
+    });
+});
+</script>
 {% endblock %}

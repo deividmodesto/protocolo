@@ -29,6 +29,7 @@ import json
 import pyodbc
 warnings.simplefilter('ignore', InsecureRequestWarning)
 from sqlalchemy import func
+from sqlalchemy.orm.attributes import flag_modified
 
 # Imports que antes estavam em forms.py
 from flask_wtf import FlaskForm
@@ -331,6 +332,7 @@ class ProtocoloModeloForm(FlaskForm):
     """Formulário para criar ou editar um Modelo de Protocolo."""
     nome = StringField('Nome do Modelo', validators=[DataRequired()])
     descricao = TextAreaField('Descrição', validators=[Optional()])
+    habilita_conferencia = BooleanField('Habilitar Conferência de Linhas')
     submit = SubmitField('Salvar Modelo')
 
 class CampoModeloForm(FlaskForm):
@@ -734,12 +736,14 @@ def editar_modelo(modelo_id):
     if form.validate_on_submit():
         modelo.nome = form.nome.data
         modelo.descricao = form.descricao.data
+        modelo.habilita_conferencia = form.habilita_conferencia.data
         db.session.commit()
         flash('Modelo atualizado com sucesso!', 'success')
         return redirect(url_for('main.listar_modelos'))
     elif request.method == 'GET':
         form.nome.data = modelo.nome
         form.descricao.data = modelo.descricao
+        form.habilita_conferencia.data = modelo.habilita_conferencia
     return render_template('admin/modelo_form.html', form=form, title="Editar Modelo de Protocolo")
 
 @main_bp.route('/admin/modelo/<int:modelo_id>/excluir', methods=['POST'])
@@ -940,6 +944,7 @@ def adicionar_modelo():
         novo_modelo = ProtocoloModelo(
             nome=form.nome.data,
             descricao=form.descricao.data,
+            habilita_conferencia=form.habilita_conferencia.data,
             setor_proprietario_id=current_user.setor_id # O setor do admin que está criando
         )
         db.session.add(novo_modelo)
@@ -1453,6 +1458,45 @@ def download_nfe_xml(chave_acesso):
     response.headers['Content-Disposition'] = f'attachment; filename={chave_acesso}-nfe.xml'
     return response
 
+@main_bp.route('/api/protocolo/<int:protocolo_id>/toggle_conferencia', methods=['POST'])
+@login_required
+def toggle_conferencia_linha(protocolo_id):
+    data = request.get_json()
+    row_index = data.get('row_index')
+
+    if row_index is None:
+        return jsonify({'success': False, 'message': 'Índice da linha não fornecido.'}), 400
+
+    protocolo = Protocolo.query.get_or_404(protocolo_id)
+
+    # Verifica permissões (mesma lógica de visualização)
+    if not current_user.tem_permissao('acessar_painel_admin') and \
+       protocolo.criado_por_id != current_user.id and \
+       protocolo.setor_destinatario_id != current_user.setor_id and \
+       protocolo.colaborador_destinatario_id != current_user.id:
+        return jsonify({'success': False, 'message': 'Acesso negado.'}), 403
+
+    # Lógica para alternar o status
+    if protocolo.dados_preenchidos and len(protocolo.dados_preenchidos) > row_index:
+        # Precisamos clonar a lista para modificá-la
+        dados_lista = list(protocolo.dados_preenchidos)
+        linha = dados_lista[row_index]
+        
+        # Alterna o valor booleano (cria se não existir)
+        estado_atual = linha.get('_conferido', False)
+        linha['_conferido'] = not estado_atual
+        
+        # Salva de volta
+        protocolo.dados_preenchidos = dados_lista
+        
+        # Informa ao SQLAlchemy que o campo JSON mudou
+        flag_modified(protocolo, "dados_preenchidos")
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'novo_estado': linha['_conferido']})
+    
+    return jsonify({'success': False, 'message': 'Linha não encontrada.'}), 404
 
 @main_bp.route('/download-nfe/pdf/<chave_acesso>')
 @login_required

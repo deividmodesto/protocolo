@@ -31,3 +31,4 @@ class ProtocoloForm(FlaskForm):
     descricao = TextAreaField('Descrição detalhada', validators=[DataRequired()])
     habilita_conferencia = BooleanField('Habilitar Conferência de Linhas (Checklist)')
     submit = SubmitField('Criar Protocolo')
+    submit_rascunho = SubmitField('Salvar como Rascunho')

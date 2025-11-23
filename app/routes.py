@@ -14,7 +14,7 @@ from io import BytesIO
 from weasyprint.css import CSS
 import zlib
 import base64
-from zeep import Client, xsd # Importa o xsd para tratamento de schema
+from zeep import Client, xsd 
 from zeep.transports import Transport
 from requests import Session
 from requests.auth import HTTPBasicAuth
@@ -31,7 +31,7 @@ warnings.simplefilter('ignore', InsecureRequestWarning)
 from sqlalchemy import func
 from sqlalchemy.orm.attributes import flag_modified
 
-# Imports que antes estavam em forms.py
+# --- IMPORTAÇÕES DE FORMULÁRIOS ---
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField, TextAreaField, MultipleFileField, DateField, BooleanField, SelectMultipleField
 from wtforms.validators import DataRequired, Email, EqualTo, ValidationError, Optional, Length
@@ -52,23 +52,16 @@ def permission_required(permission):
         @wraps(f)
         def decorated_function(*args, **kwargs):
             if not current_user.tem_permissao(permission):
-                abort(403) # Erro de Acesso Proibido
+                abort(403) 
             return f(*args, **kwargs)
         return decorated_function
     return decorator
 
 # ===================================================================
-# FUNÇÃO AUXILIAR E DECORATOR
+# FUNÇÃO AUXILIAR PARA SEFAZ
 # ===================================================================
 def _obter_xml_por_chave_sefaz(chave_acesso):
-    """
-    Consulta automática da NF-e por chave de acesso.
-    Seleciona o webservice correto de acordo com a UF (cUF) da chave.
-    """
     try:
-        # =========================
-        # MAPA UF -> URL PRODUÇÃO
-        # =========================
         WSDL_CONSULTA_NFE = {
             "11": "https://nfe.sefaz.ac.gov.br/nfe/services/NFeConsultaProtocolo4?wsdl",
             "12": "https://nfe.sefaz.ac.gov.br/nfe/services/NFeConsultaProtocolo4?wsdl",
@@ -99,35 +92,20 @@ def _obter_xml_por_chave_sefaz(chave_acesso):
             "53": "https://nfe.fazenda.df.gov.br/nfe/services/NFeConsultaProtocolo4?wsdl",
         }
 
-        # =========================
-        # VERIFICAÇÃO DA CHAVE
-        # =========================
         if not chave_acesso or len(chave_acesso) < 44:
             raise ValueError("Chave de acesso inválida.")
         uf_code = chave_acesso[:2]
         WSDL_URL = WSDL_CONSULTA_NFE.get(uf_code)
         if not WSDL_URL:
             raise ValueError(f"UF {uf_code} não mapeada para consulta NFe.")
-        SERVICE_DOMAIN = WSDL_URL.split("/nfe")[0]  # para montar a sessão SSL
+        SERVICE_DOMAIN = WSDL_URL.split("/nfe")[0] 
 
-        # =========================
-        # CERTIFICADO
-        # =========================
         base_dir = current_app.root_path.replace('/app', '')
         CERT_FILENAME = '000181.pfx'
-        CERT_PASSWORD = 'Fr12345'  # ajuste para a senha real
+        CERT_PASSWORD = 'Fr12345'  
         CERT_FILE_PATH = os.path.join(base_dir, 'certs', CERT_FILENAME)
         if not os.path.exists(CERT_FILE_PATH):
             raise FileNotFoundError(f"Certificado não encontrado: {CERT_FILE_PATH}")
-
-        # =========================
-        # REQUISIÇÃO
-        # =========================
-        from requests import Session
-        from requests_pkcs12 import Pkcs12Adapter
-        from zeep import Client
-        from zeep.transports import Transport
-        from lxml import etree
 
         session = Session()
         session.verify = False
@@ -138,25 +116,22 @@ def _obter_xml_por_chave_sefaz(chave_acesso):
         transport = Transport(session=session)
         client = Client(wsdl=WSDL_URL, transport=transport)
 
-        # Monta o XML de consulta
         NFE_NAMESPACE = "http://www.portalfiscal.inf.br/nfe"
         consSitNFe = etree.Element("consSitNFe", versao="4.00", xmlns=NFE_NAMESPACE)
-        etree.SubElement(consSitNFe, "tpAmb").text = "1"       # 1 = produção
+        etree.SubElement(consSitNFe, "tpAmb").text = "1"       
         etree.SubElement(consSitNFe, "xServ").text = "CONSULTAR"
         etree.SubElement(consSitNFe, "chNFe").text = chave_acesso
 
-        # Chamada ao serviço
         resultado = client.service.nfeConsultaNF(consSitNFe)
         if resultado is None:
             flash("A SEFAZ não retornou uma resposta válida.", 'danger')
             return None
 
-        # Analisa a resposta
         ns = {'nfe': 'http://www.portalfiscal.inf.br/nfe'}
         cstat_element = resultado.find('nfe:cStat', ns)
         status_code = cstat_element.text if cstat_element is not None else None
 
-        if status_code == '100':  # Autorizado o uso da NF-e
+        if status_code == '100':  
             flash('XML completo da Nota Fiscal obtido com sucesso!', 'success')
             return etree.tostring(resultado, encoding='utf-8', xml_declaration=True)
 
@@ -170,38 +145,20 @@ def _obter_xml_por_chave_sefaz(chave_acesso):
         flash('Ocorreu um erro ao comunicar com o serviço de consulta da SEFAZ.', 'danger')
         return None
 
-    
-def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
-
-def permission_required(permission):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            if not current_user.tem_permissao(permission):
-                abort(403) # Erro de Acesso Proibido
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
-
 # ===================================================================
 # CLASSES DE FORMULÁRIO
 # ===================================================================
 class NFeConsultaForm(FlaskForm):
-    """Formulário para consultar uma NF-e pela chave de acesso."""
     chave_acesso = StringField('Chave de Acesso da NF-e', 
                                validators=[DataRequired(), Length(min=44, max=44, message='A chave de acesso deve ter 44 dígitos.')])
     submit = SubmitField('Consultar Nota Fiscal')
 
 class PerfilForm(FlaskForm):
-    """Formulário para criar ou editar um Perfil."""
     nome = StringField('Nome do Perfil', validators=[DataRequired()])
     permissoes = SelectMultipleField('Permissões', coerce=int)
     submit = SubmitField('Salvar Perfil')
 
 class FornecedorForm(FlaskForm):
-    """Formulário para criar ou editar um Fornecedor."""
     razao_social = StringField('Razão Social', validators=[DataRequired()])
     nome_fantasia = StringField('Nome Fantasia', validators=[Optional()])
     cnpj = StringField('CNPJ', validators=[Optional()])
@@ -211,7 +168,6 @@ class FornecedorForm(FlaskForm):
     submit = SubmitField('Salvar')
 
     def validate_razao_social(self, razao_social):
-        # Lógica para edição: ignora o próprio registro na validação de duplicidade
         if hasattr(self, 'original_razao_social') and self.original_razao_social == razao_social.data:
             return
         fornecedor = Fornecedor.query.filter_by(razao_social=razao_social.data).first()
@@ -219,16 +175,14 @@ class FornecedorForm(FlaskForm):
             raise ValidationError('Esta Razão Social já está cadastrada.')
 
     def validate_cnpj(self, cnpj):
-        if cnpj.data: # Valida apenas se o CNPJ foi preenchido
+        if cnpj.data: 
             if hasattr(self, 'original_cnpj') and self.original_cnpj == cnpj.data:
                 return
             fornecedor = Fornecedor.query.filter_by(cnpj=cnpj.data).first()
             if fornecedor:
                 raise ValidationError('Este CNPJ já está cadastrado.')
             
-        
 class AuditoriaForm(FlaskForm):
-    """Formulário para filtrar o log de auditoria."""
     protocolo_numero = StringField('Número do Protocolo', validators=[Optional()])
     colaborador = SelectField('Filtrar por Colaborador', coerce=int, validators=[Optional()])
     data_inicio = DateField('Data Inicial', format='%Y-%m-%d', validators=[Optional()])
@@ -251,22 +205,19 @@ class LoginForm(FlaskForm):
     password = PasswordField('Senha', validators=[DataRequired()])
     submit = SubmitField('Login')
 
+# *** FORMULÁRIO ATUALIZADO COM BOTÃO DE RASCUNHO ***
 class ProtocoloForm(FlaskForm):
-    """Formulário para a criação de um novo protocolo."""
     modelo = SelectField('Usar Modelo de Protocolo (Opcional)', coerce=int, validators=[Optional()])
     assunto = StringField('Assunto', validators=[DataRequired()])
-    #fornecedor = SelectField('Fornecedor Associado (Opcional)', coerce=int, validators=[Optional()])
     setor_destinatario = SelectField('Encaminhar para o Setor', coerce=int, validators=[DataRequired()])
     colaborador_destinatario = SelectField('Direcionar para Colaborador (Opcional)', coerce=int, validators=[Optional()])
-
-    # --- ADICIONE ESTE CAMPO ---
     data_vencimento = DateField('Prazo Final (Opcional)', format='%Y-%m-%d', validators=[Optional()])
     is_externo = BooleanField('Protocolo Externo (para impressão e assinatura)')
-
-    # *** MUDANÇA #2 (Validação) ***
     descricao = TextAreaField('Descrição detalhada', validators=[Optional()])
     anexos = MultipleFileField('Anexos (opcional)', validators=[Optional()])
-    submit = SubmitField('Criar Protocolo')
+    
+    submit = SubmitField('Criar e Enviar Protocolo')
+    submit_rascunho = SubmitField('Salvar como Rascunho') # Novo botão
 
 class DespachoForm(FlaskForm):
     descricao = TextAreaField('Comentário / Despacho', validators=[DataRequired()])
@@ -278,23 +229,18 @@ class SetorForm(FlaskForm):
     submit = SubmitField('Salvar')
 
 class AdminColaboradorCreateForm(FlaskForm):
-    """Formulário para admin criar um novo colaborador."""
     nome = StringField('Nome Completo', validators=[DataRequired()])
     email = StringField('Email', validators=[DataRequired(), Email()])
     setor = SelectField('Setor', coerce=int, validators=[DataRequired()])
-    # --- MUDANÇA AQUI ---
     perfil = SelectField('Perfil de Acesso', coerce=int, validators=[DataRequired()])
     password = PasswordField('Senha', validators=[DataRequired()])
     confirm_password = PasswordField('Confirmar Senha', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Criar Colaborador')
-    # ... (validação de email continua igual) ...
 
 class AdminColaboradorEditForm(FlaskForm):
-    """Formulário para admin editar um colaborador."""
     nome = StringField('Nome Completo', validators=[DataRequired()])
     email = StringField('Email', validators=[DataRequired(), Email()])
     setor = SelectField('Setor', coerce=int, validators=[DataRequired()])
-    # --- MUDANÇA AQUI ---
     perfil = SelectField('Perfil de Acesso', coerce=int, validators=[DataRequired()])
     password = PasswordField('Nova Senha (deixe em branco para não alterar)', validators=[Optional()])
     confirm_password = PasswordField('Confirmar Nova Senha', validators=[EqualTo('password', message='As senhas devem ser iguais.')])
@@ -309,15 +255,10 @@ class AdminColaboradorEditForm(FlaskForm):
             if user: raise ValidationError('Este email já está em uso por outro colaborador.')
 
 class BuscaProtocoloForm(FlaskForm):
-    """Formulário para buscar e filtrar protocolos."""
     termo_busca = StringField('Buscar por Assunto/Descrição/Número', validators=[Optional()])
-    
-    # --- LINHA ADICIONADA ---
     modelo = SelectField('Filtrar por Modelo', coerce=int, validators=[Optional()])
-    # --- FIM DA LINHA ADICIONADA ---
-
     status = SelectField('Filtrar por Status', choices=[
-        ('', 'Todos os Status'), # Valor vazio para representar "todos"
+        ('', 'Todos os Status'), 
         ('Aberto', 'Aberto'),
         ('Em Análise', 'Em Análise'),
         ('Pendente', 'Pendente'),
@@ -329,14 +270,12 @@ class BuscaProtocoloForm(FlaskForm):
     submit = SubmitField('Pesquisar')
 
 class ProtocoloModeloForm(FlaskForm):
-    """Formulário para criar ou editar um Modelo de Protocolo."""
     nome = StringField('Nome do Modelo', validators=[DataRequired()])
     descricao = TextAreaField('Descrição', validators=[Optional()])
     habilita_conferencia = BooleanField('Habilitar Conferência de Linhas')
     submit = SubmitField('Salvar Modelo')
 
 class CampoModeloForm(FlaskForm):
-    """Formulário para adicionar um campo a um Modelo de Protocolo."""
     nome_campo = StringField('Nome do Campo', validators=[DataRequired()])
     tipo_campo = SelectField('Tipo do Campo', choices=[
         ('texto', 'Texto Curto'),
@@ -348,7 +287,6 @@ class CampoModeloForm(FlaskForm):
     submit = SubmitField('Adicionar Campo')
 
 class ChangePasswordForm(FlaskForm):
-    """Formulário para o usuário alterar a própria senha."""
     senha_atual = PasswordField('Senha Atual', validators=[DataRequired()])
     nova_senha = PasswordField('Nova Senha', validators=[DataRequired()])
     confirmar_senha = PasswordField('Confirmar Nova Senha', 
@@ -357,7 +295,6 @@ class ChangePasswordForm(FlaskForm):
 
 
 class DeleteForm(FlaskForm):
-    """Um formulário genérico para botões de exclusão que só precisa de proteção CSRF."""
     pass
 
 # ===================================================================
@@ -391,16 +328,19 @@ def register():
 @main_bp.route('/meus-relatorios')
 @login_required
 def meus_relatorios():
-    # Status que consideramos como "em aberto" ou "pendente"
     status_pendentes = ['Aberto', 'Em Análise', 'Pendente']
 
-    # Query 1: Protocolos que o usuário criou e que estão pendentes
+    # Rascunhos (Novo bloco)
+    meus_rascunhos = Protocolo.query.options(joinedload(Protocolo.modelo_usado)).filter(
+        Protocolo.criado_por_id == current_user.id,
+        Protocolo.status == 'Rascunho'
+    ).order_by(Protocolo.data_criacao.desc()).all()
+
     protocolos_enviados = Protocolo.query.options(joinedload(Protocolo.modelo_usado)).filter(
         Protocolo.criado_por_id == current_user.id,
         Protocolo.status.in_(status_pendentes)
     ).order_by(Protocolo.data_criacao.desc()).all()
 
-    # Query 2: Protocolos destinados ao usuário/setor dele e que estão pendentes
     protocolos_recebidos = Protocolo.query.options(joinedload(Protocolo.modelo_usado)).filter(
         or_(
             Protocolo.setor_destinatario_id == current_user.setor_id,
@@ -412,6 +352,7 @@ def meus_relatorios():
     return render_template('meus_relatorios.html', 
                            enviados=protocolos_enviados, 
                            recebidos=protocolos_recebidos,
+                           rascunhos=meus_rascunhos,
                            title="Meus Relatórios")
 
 # --- ROTAS DE PROTOCOLO ---
@@ -421,12 +362,9 @@ def meus_relatorios():
 def criar_protocolo():
     form = ProtocoloForm()
     
-    # Popula os dropdowns estáticos
     form.setor_destinatario.choices = [(s.id, s.nome) for s in Setor.query.order_by('nome').all()]
     form.modelo.choices = [(m.id, m.nome) for m in ProtocoloModelo.query.order_by('nome').all()]
     form.modelo.choices.insert(0, (0, '--- Nenhum ---'))
-    #form.fornecedor.choices = [(f.id, f.razao_social) for f in Fornecedor.query.order_by('razao_social').all()]
-    #form.fornecedor.choices.insert(0, (0, '--- Nenhum ---'))
 
     if request.method == 'POST':
         setor_id = request.form.get('setor_destinatario')
@@ -449,55 +387,56 @@ def criar_protocolo():
                     for campo in modelo_selecionado.campos:
                         valor = request.form.get(f'{campo.nome_campo}-{i}')
                         registro_linha[campo.nome_campo] = valor
+                    
+                    if modelo_selecionado.habilita_conferencia:
+                        registro_linha['_conferido'] = False
+                        
                     lista_dados_customizados.append(registro_linha)
                     i += 1
         
-        # *** MUDANÇA #1 (LÓGICA) ***
-        # SUBSTITUI O BLOCO DE CÓDIGO ANTIGO
         ano_atual = date.today().year
         setor_destino = Setor.query.get(form.setor_destinatario.data)
 
-        # Encontra o 'numero_protocolo' mais alto deste ano
         ultimo_protocolo_str = db.session.query(func.max(Protocolo.numero_protocolo)).filter(
             Protocolo.numero_protocolo.like(f'{ano_atual}%')
         ).scalar()
 
-        sequencial = 1 # Define o padrão como 1 (para o primeiro protocolo do ano)
+        sequencial = 1
         if ultimo_protocolo_str:
-            # Se um protocolo foi encontrado (ex: "2025-000003"), extrai o sequencial
             try:
                 ultimo_sequencial_int = int(ultimo_protocolo_str.split('-')[1])
                 sequencial = ultimo_sequencial_int + 1
             except (IndexError, ValueError, AttributeError):
-                # Se falhar (ex: formato inesperado), volta para 1 como segurança
                 sequencial = 1
                 
         numero_protocolo_gerado = f"{ano_atual:04d}-{sequencial:06d}"
-        # *** FIM DA MUDANÇA #1 ***
+
+        # LÓGICA DE STATUS E RASCUNHO
+        status_inicial = 'Aberto'
+        msg_historico = f"Protocolo criado e encaminhado para o setor {setor_destino.nome}."
+        
+        if form.submit_rascunho.data:
+            status_inicial = 'Rascunho'
+            msg_historico = "Protocolo salvo como rascunho."
 
         novo_protocolo = Protocolo(
             numero_protocolo=numero_protocolo_gerado,
             assunto=form.assunto.data,
-            # *** MUDANÇA #3 (Suporte à Validação) ***
             descricao=form.descricao.data or '',
             data_vencimento=form.data_vencimento.data,
             is_externo=form.is_externo.data,
-            
-            # vvv LINHAS CORRIGIDAS vvv
-            # Lê os dados dos campos hidden que vêm do formulário HTML
             fornecedor_ext_cod=request.form.get('fornecedor_ext_cod') if request.form.get('fornecedor_ext_cod') else None,
             fornecedor_ext_nome=request.form.get('fornecedor_ext_nome') if request.form.get('fornecedor_ext_nome') else None,
-            # ^^^ LINHAS CORRIGIDAS ^^^
-
             criado_por_id=current_user.id,
             setor_destinatario_id=form.setor_destinatario.data,
             colaborador_destinatario_id=form.colaborador_destinatario.data if form.colaborador_destinatario.data and form.colaborador_destinatario.data != 0 else None,
             modelo_usado_id=form.modelo.data if form.modelo.data and form.modelo.data != 0 else None,
-            # --- GARANTIA DA CORREÇÃO ---
-            dados_preenchidos=lista_dados_customizados if lista_dados_customizados else []
+            dados_preenchidos=lista_dados_customizados if lista_dados_customizados else [],
+            status=status_inicial
         )
         
         db.session.add(novo_protocolo)
+        
         files = request.files.getlist(form.anexos.name)
         for file in files:
             if file and allowed_file(file.filename):
@@ -509,23 +448,26 @@ def criar_protocolo():
                 novo_anexo = Anexo(nome_arquivo=filename, caminho_arquivo=novo_nome_arquivo, protocolo=novo_protocolo)
                 db.session.add(novo_anexo)
         
-        primeiro_historico = Historico(descricao=f"Protocolo criado e encaminhado para o setor {setor_destino.nome}.", protocolo=novo_protocolo, colaborador_id=current_user.id)
+        primeiro_historico = Historico(descricao=msg_historico, protocolo=novo_protocolo, colaborador_id=current_user.id)
         db.session.add(primeiro_historico)
         
         db.session.commit()
-        flash('Protocolo criado com sucesso!', 'success')
-
-        if novo_protocolo.colaborador_destinatario:
-            destinatario = novo_protocolo.colaborador_destinatario
-            if destinatario.email and destinatario.id != current_user.id:
-                send_email(
-                    subject=f"Novo Protocolo Recebido: {novo_protocolo.numero_protocolo}",
-                    recipients=[destinatario.email],
-                    template='email/novo_protocolo',
-                    destinatario=destinatario,
-                    protocolo=novo_protocolo,
-                    remetente=current_user
-                )
+        
+        if status_inicial == 'Rascunho':
+            flash('Rascunho salvo com sucesso!', 'info')
+        else:
+            flash('Protocolo criado com sucesso!', 'success')
+            if novo_protocolo.colaborador_destinatario:
+                destinatario = novo_protocolo.colaborador_destinatario
+                if destinatario.email and destinatario.id != current_user.id:
+                    send_email(
+                        subject=f"Novo Protocolo Recebido: {novo_protocolo.numero_protocolo}",
+                        recipients=[destinatario.email],
+                        template='email/novo_protocolo',
+                        destinatario=destinatario,
+                        protocolo=novo_protocolo,
+                        remetente=current_user
+                    )
 
         return redirect(url_for('main.protocolo_detalhe', protocolo_id=novo_protocolo.id))
         
@@ -536,12 +478,100 @@ def criar_protocolo():
         
     return render_template('criar_protocolo.html', form=form, title="Novo Protocolo")
 
+@main_bp.route('/protocolo/<int:protocolo_id>/editar', methods=['GET', 'POST'])
+@login_required
+def editar_rascunho(protocolo_id):
+    protocolo = Protocolo.query.get_or_404(protocolo_id)
+
+    if protocolo.criado_por_id != current_user.id or protocolo.status != 'Rascunho':
+        flash('Você não tem permissão para editar este protocolo ou ele já foi enviado.', 'danger')
+        return redirect(url_for('main.protocolo_detalhe', protocolo_id=protocolo.id))
+
+    form = ProtocoloForm(obj=protocolo)
+    
+    form.setor_destinatario.choices = [(s.id, s.nome) for s in Setor.query.order_by('nome').all()]
+    form.modelo.choices = [(m.id, m.nome) for m in ProtocoloModelo.query.order_by('nome').all()]
+    form.modelo.choices.insert(0, (0, '--- Nenhum ---'))
+    
+    colaboradores = Colaborador.query.filter_by(setor_id=protocolo.setor_destinatario_id).order_by(Colaborador.nome).all()
+    form.colaborador_destinatario.choices = [(c.id, c.nome) for c in colaboradores]
+    form.colaborador_destinatario.choices.insert(0, (0, '--- Nenhum ---'))
+
+    if request.method == 'POST' and form.validate_on_submit():
+        form.populate_obj(protocolo)
+        
+        lista_dados_customizados = []
+        if form.modelo.data and form.modelo.data != 0:
+            modelo_selecionado = ProtocoloModelo.query.get(form.modelo.data)
+            if modelo_selecionado and modelo_selecionado.campos:
+                i = 0
+                primeiro_campo = modelo_selecionado.campos[0].nome_campo 
+                while request.form.get(f'{primeiro_campo}-{i}') is not None:
+                    registro_linha = {}
+                    for campo in modelo_selecionado.campos:
+                        valor = request.form.get(f'{campo.nome_campo}-{i}')
+                        registro_linha[campo.nome_campo] = valor
+                    
+                    if modelo_selecionado.habilita_conferencia:
+                        registro_linha['_conferido'] = False
+                        
+                    lista_dados_customizados.append(registro_linha)
+                    i += 1
+        protocolo.dados_preenchidos = lista_dados_customizados
+
+        if form.submit_rascunho.data:
+            flash('Rascunho atualizado.', 'info')
+        else:
+            protocolo.status = 'Aberto'
+            protocolo.data_criacao = datetime.now() 
+            
+            hist = Historico(descricao="Rascunho finalizado e enviado.", protocolo=protocolo, colaborador_id=current_user.id)
+            db.session.add(hist)
+            
+            flash('Protocolo finalizado e enviado!', 'success')
+            
+            if protocolo.colaborador_destinatario:
+                 destinatario = protocolo.colaborador_destinatario
+                 if destinatario.email and destinatario.id != current_user.id:
+                    send_email(
+                        subject=f"Novo Protocolo Recebido: {protocolo.numero_protocolo}",
+                        recipients=[destinatario.email],
+                        template='email/novo_protocolo',
+                        destinatario=destinatario,
+                        protocolo=protocolo,
+                        remetente=current_user
+                    )
+
+        db.session.commit()
+        return redirect(url_for('main.protocolo_detalhe', protocolo_id=protocolo.id))
+
+    return render_template('criar_protocolo.html', form=form, title="Editar Rascunho", protocolo_existente=protocolo)
+
+# *** NOVA ROTA DE EXCLUSÃO DE RASCUNHO ***
+@main_bp.route('/protocolo/<int:protocolo_id>/excluir', methods=['POST'])
+@login_required
+def excluir_protocolo(protocolo_id):
+    protocolo = Protocolo.query.get_or_404(protocolo_id)
+    
+    if protocolo.criado_por_id != current_user.id or protocolo.status != 'Rascunho':
+        flash('Você não tem permissão para excluir este protocolo ou ele não é um rascunho.', 'danger')
+        return redirect(url_for('main.index'))
+    
+    try:
+        db.session.delete(protocolo)
+        db.session.commit()
+        flash('Rascunho excluído com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir rascunho: {str(e)}', 'danger')
+        
+    return redirect(url_for('main.meus_relatorios'))
+
 @main_bp.route('/protocolo/<int:protocolo_id>')
 @login_required
 def protocolo_detalhe(protocolo_id):
     protocolo = Protocolo.query.get_or_404(protocolo_id)
     
-    # Lógica de permissão de visualização atualizada
     if not current_user.tem_permissao('acessar_painel_admin') and \
    protocolo.criado_por_id != current_user.id and \
    protocolo.setor_destinatario_id != current_user.setor_id and \
@@ -559,7 +589,6 @@ def protocolo_detalhe(protocolo_id):
 def tramitar_protocolo(protocolo_id):
     protocolo = Protocolo.query.get_or_404(protocolo_id)
     
-    # Lógica de permissão de ação atualizada
     if not current_user.tem_permissao('acessar_painel_admin') and \
    protocolo.criado_por_id != current_user.id and \
    protocolo.setor_destinatario_id != current_user.setor_id and \
@@ -603,7 +632,7 @@ def download_file(filename):
 
 @main_bp.route('/admin/perfis')
 @login_required
-@permission_required('gerenciar_perfis') # Por enquanto, usaremos o decorator antigo
+@permission_required('gerenciar_perfis') 
 def listar_perfis():
     perfis = Perfil.query.order_by(Perfil.nome).all()
     return render_template('admin/perfis.html', perfis=perfis, title="Gerenciar Perfis")
@@ -615,12 +644,8 @@ def adicionar_perfil():
     form = PerfilForm()
     form.permissoes.choices = [(p.id, p.nome) for p in Permissao.query.order_by('nome').all()]
 
-    # --- INÍCIO DA CORREÇÃO ---
-    # Garante que, na primeira vez que a página é carregada (GET), 
-    # a lista de dados das permissões seja uma lista vazia, e não None.
     if request.method == 'GET':
         form.permissoes.data = []
-    # --- FIM DA CORREÇÃO ---
 
     if form.validate_on_submit():
         novo_perfil = Perfil(nome=form.nome.data)
@@ -641,7 +666,7 @@ def adicionar_perfil():
 @permission_required('gerenciar_perfis')
 def editar_perfil(perfil_id):
     perfil = Perfil.query.get_or_404(perfil_id)
-    form = PerfilForm(obj=perfil) # 'obj=perfil' pré-popula o nome
+    form = PerfilForm(obj=perfil) 
     form.permissoes.choices = [(p.id, p.nome) for p in Permissao.query.order_by('nome').all()]
     if form.validate_on_submit():
         perfil.nome = form.nome.data
@@ -651,22 +676,18 @@ def editar_perfil(perfil_id):
         flash('Perfil atualizado com sucesso!', 'success')
         return redirect(url_for('main.listar_perfis'))
     elif request.method == 'GET':
-        # Pré-seleciona as permissões atuais do perfil
         form.permissoes.data = [p.id for p in perfil.permissoes]
     return render_template('admin/perfil_form.html', form=form, title="Editar Perfil")
 
 
 @main_bp.route('/admin/fornecedores')
 @login_required
-@permission_required('gerenciar_fornecedores') # Ajuste a permissão se necessário
+@permission_required('gerenciar_fornecedores') 
 def listar_fornecedores():
     fornecedores_externos = []
     try:
         conn = pyodbc.connect(Config.EXT_DB_CONN_STR, timeout=5)
         cursor = conn.cursor()
-        # Seleciona as colunas desejadas da tabela SA2010
-        # Adicionei um filtro D_E_L_E_T_E_ <> '*' que é comum em Protheus para registros não deletados
-        # Se não for o caso, pode remover essa parte do WHERE
         sql = """
             SELECT
                 A2_COD, A2_LOJA, A2_NOME, A2_END, A2_BAIRRO,
@@ -679,17 +700,15 @@ def listar_fornecedores():
                 A2_NOME
         """
         cursor.execute(sql)
-        # Transforma as linhas em dicionários para facilitar o uso no template
         fornecedores_externos = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
         conn.close()
     except Exception as e:
         flash(f"Erro ao conectar ou buscar fornecedores no banco externo: {e}", "danger")
-        print(f"Erro DB Externo: {e}") # Para debug no console
+        print(f"Erro DB Externo: {e}")
 
-    # Não precisamos mais do form_excluir aqui
     return render_template('admin/fornecedores.html',
                            fornecedores=fornecedores_externos,
-                           title="Consultar Fornecedores Externos") # Título atualizado
+                           title="Consultar Fornecedores Externos")
 
 @main_bp.route('/admin/fornecedor/novo', methods=['GET', 'POST'])
 @login_required
@@ -747,12 +766,10 @@ def editar_modelo(modelo_id):
     return render_template('admin/modelo_form.html', form=form, title="Editar Modelo de Protocolo")
 
 @main_bp.route('/admin/modelo/<int:modelo_id>/excluir', methods=['POST'])
-#@csrf.exempt
 @login_required
 @permission_required('acessar_painel_admin')
 def excluir_modelo(modelo_id):
     modelo = ProtocoloModelo.query.get_or_404(modelo_id)
-    # VERIFICAÇÃO DE SEGURANÇA: Não exclui se o modelo já foi usado em algum protocolo.
     if modelo.protocolos_usados:
         flash('Este modelo não pode ser excluído pois já está em uso por protocolos existentes.', 'danger')
     else:
@@ -830,18 +847,16 @@ def listar_colaboradores():
 
 @main_bp.route('/admin/colaborador/novo', methods=['GET', 'POST'])
 @login_required
-@permission_required('acessar_painel_admin') # Manteremos o decorator antigo por enquanto
+@permission_required('acessar_painel_admin') 
 def adicionar_colaborador():
     form = AdminColaboradorCreateForm()
     form.setor.choices = [(s.id, s.nome) for s in Setor.query.order_by('nome').all()]
-    # --- MUDANÇA AQUI ---
     form.perfil.choices = [(p.id, p.nome) for p in Perfil.query.order_by('nome').all()]
     if form.validate_on_submit():
         novo_colaborador = Colaborador(
             nome=form.nome.data,
             email=form.email.data,
             setor_id=form.setor.data,
-            # --- MUDANÇA AQUI ---
             perfil_id=form.perfil.data
         )
         novo_colaborador.senha = form.password.data
@@ -858,13 +873,11 @@ def editar_colaborador(colab_id):
     colaborador = Colaborador.query.get_or_404(colab_id)
     form = AdminColaboradorEditForm(original_email=colaborador.email)
     form.setor.choices = [(s.id, s.nome) for s in Setor.query.order_by('nome').all()]
-    # --- MUDANÇA AQUI ---
     form.perfil.choices = [(p.id, p.nome) for p in Perfil.query.order_by('nome').all()]
     if form.validate_on_submit():
         colaborador.nome = form.nome.data
         colaborador.email = form.email.data
         colaborador.setor_id = form.setor.data
-        # --- MUDANÇA AQUI ---
         colaborador.perfil_id = form.perfil.data
         if form.password.data:
             colaborador.senha = form.password.data
@@ -875,7 +888,6 @@ def editar_colaborador(colab_id):
         form.nome.data = colaborador.nome
         form.email.data = colaborador.email
         form.setor.data = colaborador.setor_id
-        # --- MUDANÇA AQUI ---
         form.perfil.data = colaborador.perfil_id
     return render_template('admin/colaborador_form.html', form=form, title="Editar Colaborador")
 
@@ -960,10 +972,7 @@ def design_modelo(modelo_id):
     modelo = ProtocoloModelo.query.get_or_404(modelo_id)
     form = CampoModeloForm()
     
-    # --- INÍCIO DA CORREÇÃO ---
-    # Cria a instância do formulário de exclusão para os botões na lista de campos.
     form_excluir = DeleteForm()
-    # --- FIM DA CORREÇÃO ---
 
     if form.validate_on_submit():
         ordem_atual = len(modelo.campos)
@@ -972,18 +981,17 @@ def design_modelo(modelo_id):
             tipo_campo=form.tipo_campo.data,
             obrigatorio=form.obrigatorio.data,
             modelo_id=modelo.id,
-            ordem=ordem_atual # <-- ADICIONE ESTA LINHA
+            ordem=ordem_atual 
         )
         db.session.add(novo_campo)
         db.session.commit()
         flash(f'Campo "{form.nome_campo.data}" adicionado ao modelo.', 'success')
         return redirect(url_for('main.design_modelo', modelo_id=modelo.id))
         
-    # Adiciona form_excluir ao render_template
     return render_template('admin/modelo_design.html', 
                            modelo=modelo, 
                            form=form, 
-                           form_excluir=form_excluir, # <-- Passe a variável aqui
+                           form_excluir=form_excluir, 
                            title="Design do Modelo")
 
 @main_bp.route('/admin/modelo/<int:modelo_id>/campo/<int:campo_id>/editar', methods=['GET', 'POST'])
@@ -1045,7 +1053,6 @@ def get_campos_modelo(modelo_id):
 @main_bp.route('/index')
 @login_required
 def index():
-    # Pega o parâmetro 'view' da URL, o padrão é 'list'
     view_mode = request.args.get('view', 'list')
 
     page = request.args.get('page', 1, type=int)
@@ -1054,12 +1061,9 @@ def index():
 
     form = BuscaProtocoloForm(request.args)
     
-    # --- POPULAR OS DROPDOWNS DO FORMULÁRIO DE FILTRO ---
     form.modelo.choices = [(m.id, m.nome) for m in ProtocoloModelo.query.order_by('nome').all()]
     form.modelo.choices.insert(0, (0, 'Todos os Modelos'))
-    # --- FIM DO BLOCO ---
     
-    # A lógica de consulta base com permissões continua a mesma
     if current_user.tem_permissao('acessar_painel_admin'):
         query = Protocolo.query.options(joinedload(Protocolo.modelo_usado))
     else:
@@ -1069,7 +1073,6 @@ def index():
             Protocolo.colaborador_destinatario_id == current_user.id
         )).options(joinedload(Protocolo.modelo_usado))
     
-    # --- LÓGICA DE FILTRO ATUALIZADA ---
     if form.termo_busca.data:
         termo = f"%{form.termo_busca.data}%"
         query = query.filter(or_(Protocolo.assunto.ilike(termo), Protocolo.descricao.ilike(termo), Protocolo.numero_protocolo.ilike(termo)))
@@ -1085,16 +1088,12 @@ def index():
         from datetime import datetime, time
         data_fim_completa = datetime.combine(form.data_fim.data, time.max)
         query = query.filter(Protocolo.data_criacao <= data_fim_completa)
-    # --- FIM DA LÓGICA DE FILTRO ---
 
-    # --- LÓGICA DE VISUALIZAÇÃO CORRIGIDA ---
     protocolos_agrupados = None
     pagination = None
 
     if view_mode == 'kanban':
-        # Para o Kanban, pegamos todos os resultados filtrados, sem paginação
         protocolos_filtrados = query.order_by(Protocolo.data_criacao.desc()).all()
-        # Agora, agrupamos em um dicionário
         protocolos_agrupados = {
             'Aberto': [], 'Em Análise': [], 'Pendente': [], 'Finalizado': [], 'Arquivado': []
         }
@@ -1105,7 +1104,6 @@ def index():
         pagination = query.order_by(Protocolo.data_criacao.desc()).paginate(
             page=page, per_page=per_page, error_out=False
         )
-    # --- FIM DA LÓGICA DE VISUALIZAÇÃO ---
 
     return render_template('dashboard.html', 
                            protocolos=pagination.items if pagination else [], 
@@ -1143,20 +1141,17 @@ def get_colaboradores_por_setor(setor_id):
 def api_buscar_fornecedores():
     term = request.args.get('term', '').strip()
     results = []
-    if len(term) < 2: # Evita buscar com menos de 2 caracteres
+    if len(term) < 2: 
         return jsonify(results)
 
     try:
-        # CORREÇÃO IMPORTANTE: Usar current_app.config, que é acessível nas rotas
         conn_str = current_app.config['EXT_DB_CONN_STR']
         conn = pyodbc.connect(conn_str, timeout=5)
         cursor = conn.cursor()
         search_term = f"%{term}%"
 
-        # Busca por código OU nome, excluindo deletados e ordenando por nome
-        # Lembre-se que ajustamos o nome da coluna D_E_L_E_T_
         sql = """
-            SELECT TOP 20 -- Limita a 20 resultados para performance
+            SELECT TOP 20 
                 A2_COD, A2_NOME, A2_LOJA
             FROM
                 SA2010
@@ -1169,16 +1164,14 @@ def api_buscar_fornecedores():
         cursor.execute(sql, (search_term, search_term))
 
         for row in cursor.fetchall():
-            # Formato esperado por muitas bibliotecas autocomplete simples
             results.append({
-                "id": row.A2_COD.strip(), # Código do Fornecedor
-                "text": f"{row.A2_COD.strip()} - {row.A2_NOME.strip()} (Loja: {row.A2_LOJA.strip()})", # Texto exibido
-                "nome": row.A2_NOME.strip() # Nome separado para salvar no BD
+                "id": row.A2_COD.strip(), 
+                "text": f"{row.A2_COD.strip()} - {row.A2_NOME.strip()} (Loja: {row.A2_LOJA.strip()})", 
+                "nome": row.A2_NOME.strip() 
             })
         conn.close()
     except Exception as e:
         print(f"Erro ao buscar fornecedores externos: {e}")
-        # Retorna lista vazia em caso de erro, mas loga no console
 
     return jsonify(results)
 
@@ -1187,7 +1180,6 @@ def api_buscar_fornecedores():
 def gerar_protocolo_pdf(protocolo_id):
     protocolo = Protocolo.query.get_or_404(protocolo_id)
     
-    # A sua lógica de permissão continua aqui...
     if not current_user.tem_permissao('acessar_painel_admin') and \
        protocolo.criado_por_id != current_user.id and \
        protocolo.setor_destinatario_id != current_user.setor_id and \
@@ -1196,14 +1188,10 @@ def gerar_protocolo_pdf(protocolo_id):
 
     html_renderizado = render_template('pdf/protocolo_pdf.html', protocolo=protocolo)
     
-    # --- CÓDIGO CORRIGIDO PARA FORÇAR MODO PAISAGEM ---
-    # Define a orientação da página e as margens
     css_string = '@page { size: A4 landscape; margin: 1.5cm; }'
     pdf_css = CSS(string=css_string)
     
-    # Passa a folha de estilos para o renderizador
     pdf = HTML(string=html_renderizado, base_url=request.url_root).write_pdf(stylesheets=[pdf_css])
-    # --- FIM DA CORREÇÃO ---
     
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
@@ -1215,8 +1203,6 @@ def gerar_protocolo_pdf(protocolo_id):
 @main_bp.route('/exportar/excel')
 @login_required
 def exportar_excel():
-    # PASSO 1: REUTILIZAR EXATAMENTE A MESMA LÓGICA DE FILTRO E PERMISSÃO DA ROTA INDEX
-    # Isso garante que o Excel exportado corresponda ao que o usuário está vendo na tela.
     if current_user.role == 'admin':
         query = Protocolo.query
     else:
@@ -1242,7 +1228,6 @@ def exportar_excel():
 
     protocolos = query.order_by(Protocolo.data_criacao.desc()).all()
     
-    # PASSO 2: PREPARAR OS DADOS PARA O PANDAS
     dados_para_excel = []
     for p in protocolos:
         dados_para_excel.append({
@@ -1257,12 +1242,10 @@ def exportar_excel():
         
     df = pd.DataFrame(dados_para_excel)
     
-    # PASSO 3: CRIAR O ARQUIVO EXCEL EM MEMÓRIA
     output = BytesIO()
     df.to_excel(output, index=False, sheet_name='Protocolos')
     output.seek(0)
     
-    # PASSO 4: ENVIAR O ARQUIVO PARA O USUÁRIO
     return send_file(
         output,
         download_name="relatorio_protocolos.xlsx",
@@ -1278,16 +1261,12 @@ def exportar_excel():
 def api_protocolos_por_mes():
     doze_meses_atras = datetime.utcnow() - timedelta(days=365)
     
-    # --- CORREÇÃO FINAL ---
-    # Usamos literal_column para tratar o texto como uma coluna que pode ser nomeada com .label()
-    # E a usamos tanto no select, quanto no group_by e no order_by para consistência.
     mes_expression = literal_column("FORMAT(data_criacao, 'yyyy-MM')")
     
     dados = db.session.query(
         mes_expression.label('mes'),
         func.count(Protocolo.id).label('total')
     ).filter(Protocolo.data_criacao >= doze_meses_atras).group_by(mes_expression).order_by(mes_expression).all()
-    # --- FIM DA CORREÇÃO ---
     
     labels = [dado.mes for dado in dados]
     data = [dado.total for dado in dados]
@@ -1328,19 +1307,15 @@ def api_protocolos_por_setor():
 @permission_required('acessar_painel_admin')
 def relatorio_auditoria():
     page = request.args.get('page', 1, type=int)
-    per_page = 25 # Definimos um padrão de 25 por página para o log
+    per_page = 25 
 
     form = AuditoriaForm(request.args)
-    # Popula o dropdown de colaboradores com uma opção "Todos"
     form.colaborador.choices = [(c.id, c.nome) for c in Colaborador.query.order_by(Colaborador.nome).all()]
     form.colaborador.choices.insert(0, (0, 'Todos os Colaboradores'))
 
-    # Consulta base na tabela de Histórico
     query = Historico.query
 
-    # Aplica filtros
     if form.protocolo_numero.data:
-        # Precisa de um join para buscar pelo número do protocolo
         query = query.join(Protocolo).filter(Protocolo.numero_protocolo.ilike(f"%{form.protocolo_numero.data}%"))
 
     if form.colaborador.data and form.colaborador.data != 0:
@@ -1369,9 +1344,7 @@ def relatorio_auditoria():
 def minha_conta():
     form = ChangePasswordForm()
     if form.validate_on_submit():
-        # Verifica se a senha atual está correta
         if current_user.verificar_senha(form.senha_atual.data):
-            # Atualiza para a nova senha (o setter no modelo já faz o hash)
             current_user.senha = form.nova_senha.data
             db.session.commit()
             flash('Sua senha foi alterada com sucesso!', 'success')
@@ -1387,22 +1360,19 @@ def minha_conta():
 def api_update_protocolo_status():
     data = request.get_json()
     if not data or 'protocolo_id' not in data or 'novo_status' not in data:
-        abort(400) # Erro de "Bad Request" se os dados estiverem incompletos
+        abort(400) 
 
     protocolo = Protocolo.query.get_or_404(data['protocolo_id'])
     novo_status = data['novo_status']
 
-    # Reutiliza a mesma lógica de permissão da tramitação!
     if not current_user.tem_permissao('acessar_painel_admin') and \
    protocolo.criado_por_id != current_user.id and \
    protocolo.setor_destinatario_id != current_user.setor_id and \
    protocolo.colaborador_destinatario_id != current_user.id:
         abort(403)
 
-    # Atualiza o status
     protocolo.status = novo_status
 
-    # Cria o registro de histórico para a trilha de auditoria
     novo_historico = Historico(
         descricao=f"Status alterado para '{novo_status}' através do quadro Kanban.",
         protocolo_id=protocolo.id,
@@ -1420,7 +1390,7 @@ def api_update_protocolo_status():
 def update_field_order():
     data = request.get_json()
     if not data or 'field_ids' not in data:
-        abort(400) # Erro de requisição inválida
+        abort(400) 
 
     try:
         for index, field_id in enumerate(data['field_ids']):
@@ -1469,27 +1439,21 @@ def toggle_conferencia_linha(protocolo_id):
 
     protocolo = Protocolo.query.get_or_404(protocolo_id)
 
-    # Verifica permissões (mesma lógica de visualização)
     if not current_user.tem_permissao('acessar_painel_admin') and \
        protocolo.criado_por_id != current_user.id and \
        protocolo.setor_destinatario_id != current_user.setor_id and \
        protocolo.colaborador_destinatario_id != current_user.id:
         return jsonify({'success': False, 'message': 'Acesso negado.'}), 403
 
-    # Lógica para alternar o status
     if protocolo.dados_preenchidos and len(protocolo.dados_preenchidos) > row_index:
-        # Precisamos clonar a lista para modificá-la
         dados_lista = list(protocolo.dados_preenchidos)
         linha = dados_lista[row_index]
         
-        # Alterna o valor booleano (cria se não existir)
         estado_atual = linha.get('_conferido', False)
         linha['_conferido'] = not estado_atual
         
-        # Salva de volta
         protocolo.dados_preenchidos = dados_lista
         
-        # Informa ao SQLAlchemy que o campo JSON mudou
         flag_modified(protocolo, "dados_preenchidos")
         
         db.session.commit()

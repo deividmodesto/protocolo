@@ -3,6 +3,52 @@
 {% block content %}
     <h1 class="mb-4">Meus Relatórios</h1>
 
+    {# --- NOVO BLOCO: RASCUNHOS --- #}
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Meus Rascunhos (Não Enviados)</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th>Assunto</th>
+                        <th>Modelo</th>
+                        <th>Setor Destino</th>
+                        <th>Data de Criação/Edição</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rascunho in rascunhos %}
+                    <tr>
+                        <td>{{ rascunho.assunto }}</td>
+                        <td>
+                            {% if rascunho.modelo_usado %}
+                                <span class="badge bg-secondary">{{ rascunho.modelo_usado.nome }}</span>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ rascunho.setor_destinatario.nome }}</td>
+                        <td>{{ rascunho.data_criacao | localdatetime }}</td>
+                        <td>
+                            <a href="{{ url_for('main.editar_rascunho', protocolo_id=rascunho.id) }}" class="btn btn-sm btn-warning text-dark">
+                                <i class="bi bi-pencil-fill"></i> Continuar Preenchendo
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted">Nenhum rascunho pendente.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {# --- FIM DO BLOCO DE RASCUNHOS --- #}
+
     <div class="card mb-4">
         <div class="card-header">
             <h5>Protocolos que Enviei e Aguardam Resposta</h5>
@@ -12,7 +58,8 @@
                 <thead>
                     <tr>
                         <th>Número</th>
-                        <th>Modelo</th> <th>Assunto</th>
+                        <th>Modelo</th> 
+                        <th>Assunto</th>
                         <th>Setor Destino</th>
                         <th>Status</th>
                         <th>Data Criação</th>
@@ -38,7 +85,8 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="7" class="text-center">Você não tem protocolos pendentes que foram criados por você.</td> </tr>
+                        <td colspan="7" class="text-center">Você não tem protocolos pendentes que foram criados por você.</td> 
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -54,7 +102,8 @@
                 <thead>
                     <tr>
                         <th>Número</th>
-                        <th>Modelo</th> <th>Assunto</th>
+                        <th>Modelo</th> 
+                        <th>Assunto</th>
                         <th>Criado Por</th>
                         <th>Status</th>
                         <th>Data Criação</th>
